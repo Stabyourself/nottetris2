@@ -1,3 +1,11 @@
+function setGraphicsMode( scale, fullscreen, vsync, fsaa )
+	if love.graphics.setMode then
+		love.graphics.setMode( 160*scale, 144*scale, fs, vsync, fsaa )
+	elseif love.window.setMode then
+		love.window.setMode( 160*scale, 144*scale, {fullscreen=fullscreen, vsync=vsync, msaa=fsaa})
+	end
+end
+
 function love.load()
 	--requires--
 	require "controls"
@@ -24,10 +32,10 @@ function love.load()
 	
 	if fullscreen == false then
 		if scale ~= 5 then
-			love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+			setGraphicsMode( scale, false, vsync, 0 )
 		end
 	else
-		love.graphics.setMode( 0, 0, true, vsync, 0 )
+		setGraphicsMode( 0, true, vsync, 0 )
 		love.mouse.setVisible( false )
 		desktopwidth, desktopheight = love.graphics.getWidth(), love.graphics.getHeight()
 		saveoptions()
@@ -599,8 +607,11 @@ function saveoptions()
 end
 
 function autosize()
+	if not love.graphics.getModes then
+		love.graphics.getModes = love.window.getFullscreenModes
+	end
 	local modes = love.graphics.getModes()
-	desktopwidth, desktopheight = modes[1]["width"], modes[1]["height"]
+	desktopwidth, desktopheight = modes[1].width, modes[1].height
 end
 
 function togglefullscreen(fullscr)
@@ -609,9 +620,9 @@ function togglefullscreen(fullscr)
 	if fullscr == false then
 		scale = suggestedscale
 		physicsscale = scale/4
-		love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+		setGraphicsMode( scale, false, vsync, 0 )
 	else
-		love.graphics.setMode( 0, 0, true, vsync, 16 )
+		setGraphicsMode( 0, true, vsync, 16 )
 		desktopwidth, desktopheight = love.graphics.getWidth(), love.graphics.getHeight()
 		suggestedscale = math.min(math.floor((desktopheight-50)/144), math.floor((desktopwidth-10)/160))
 		suggestedscale = math.min(math.floor((desktopheight-50)/144), math.floor((desktopwidth-10)/160))
@@ -685,7 +696,7 @@ function savehighscores()
 end
 
 function changescale(i)
-	love.graphics.setMode( 160*i, 144*i, false, vsync, 0 )
+	setGraphicsMode( i, false, vsync, 0 )
 	nextpieceimg = {}
 	for j = 1, 7 do
 		nextpieceimg[j] = newPaddedImage( "graphics/pieces/"..j..".png", i )
@@ -1120,7 +1131,7 @@ function love.keypressed( key, unicode )
 	elseif gamestate == "gameBmulti" and gamestarted == false then
 		if controls.check("escape", key) then
 			if not fullscreen then
-				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+				setGraphicsMode( scale, false, 0 )
 			end
 			gamestate = "multimenu"
 			if musicno < 4 then
@@ -1130,7 +1141,7 @@ function love.keypressed( key, unicode )
 	elseif gamestate == "gameBmulti" and gamestarted == true then
 		if controls.check("escape", key) then
 			if not fullscreen then
-				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+				setGraphicsMode( scale, false, 0 )
 			end
 			gamestate = "multimenu"
 		end
@@ -1149,7 +1160,7 @@ function love.keypressed( key, unicode )
 				love.audio.play(music[musicno])
 			end
 			if not fullscreen then
-				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+				setGraphicsMode( scale, false, 0 )
 			end
 			gamestate = "multimenu"
 		end
