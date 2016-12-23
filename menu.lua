@@ -213,6 +213,10 @@ function menu_draw()
 end
 
 function menu_update(dt)
+	if oldtime == nil then
+		oldtime = love.timer.getTime()
+	end
+
 	if gamestate == "logo" then
 		logotime = logotime + dt
 		
