@@ -291,6 +291,17 @@ function menu_update(dt)
 end
 
 function getHat()
+	local h = love.joystick.getHat(0, 0)
+	
+	if h == "d" or h == "ld" or h == "rd" then
+		return "d"
+	end
+
+	if h == "u" or h == "lu" or h == "ru" then
+		return "u"
+	end
+
+
 	local x, y = love.joystick.getAxis( 0, 0 ), love.joystick.getAxis( 0, 1 )
 	
 	if y < -0.2 then
