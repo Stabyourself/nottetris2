@@ -50,12 +50,10 @@ end
 
 function rocket_draw()
 	--FULLSCREEN OFFSET
-	if fullscreen then
 		love.graphics.translate(fullscreenoffsetX, fullscreenoffsetY)
 		
 		--scissor
-		love.graphics.setScissor(fullscreenoffsetX, fullscreenoffsetY, 160*scale, 144*scale)
-	end
+		love.graphics.setScissor(fullscreenoffsetX, fullscreenoffsetY, windowwidth*scale, windowheight*scale)
 	
 	currenttime = love.timer.getTime()
 	timelapsed = currenttime - rockettimer
@@ -157,10 +155,8 @@ function rocket_draw()
 	end
 	
 	--FULLSCREEN OFFSET
-	if fullscreen then
 		love.graphics.translate(-fullscreenoffsetX, -fullscreenoffsetY)
 		
 		--scissor
 		love.graphics.setScissor()
-	end
 end

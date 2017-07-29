@@ -1,4 +1,5 @@
 function gameA_load()
+	track("games")
 	gamestate = "gameA"
 	
 	pause = false
@@ -56,6 +57,7 @@ function gameA_load()
 end
 
 function game_addTetriA() --creates new block (using createtetriA) at 1 and sets its velocity
+	track("pieces_received")
 	--NEW BLOCK--
 	randomblock = nextpiece
 	createtetriA(randomblock, 1, 224, blockstartY)
@@ -131,12 +133,10 @@ end
 
 function gameA_draw()
 	--FULLSCREEN OFFSET
-	if fullscreen then
-		love.graphics.translate(fullscreenoffsetX, fullscreenoffsetY)
-		
-		--scissor
-		love.graphics.setScissor(fullscreenoffsetX, fullscreenoffsetY, 160*scale, 144*scale)
-	end
+	love.graphics.translate(fullscreenoffsetX, fullscreenoffsetY)
+	
+	--scissor
+	love.graphics.setScissor(fullscreenoffsetX, fullscreenoffsetY, windowwidth*scale, windowheight*scale)
 	
 	--background--
 	love.graphics.draw(gamebackgroundcutoff, 0, 0, 0, scale, scale)
@@ -184,11 +184,7 @@ function gameA_draw()
 	----------------
 	--Last score
 	if scoreaddtimer < scoreaddtime then
-		if fullscreen then
-			love.graphics.setScissor(105*scale+fullscreenoffsetX, 35*scale+fullscreenoffsetY, 55*scale, 9*scale)
-		else
-			love.graphics.setScissor(105*scale, 35*scale, 55*scale, 9*scale)
-		end
+		love.graphics.setScissor(105*scale+fullscreenoffsetX, 35*scale+fullscreenoffsetY, 55*scale, 9*scale)
 		
 		love.graphics.setFont(whitefont)
 		
@@ -202,7 +198,7 @@ function gameA_draw()
 		love.graphics.setFont(tetrisfont)	
 		
 		if fullscreen then
-			love.graphics.setScissor(fullscreenoffsetX, fullscreenoffsetY, 160*scale, 144*scale)
+			love.graphics.setScissor(fullscreenoffsetX, fullscreenoffsetY, windowwidth*scale, windowheight*scale)
 		else
 			love.graphics.setScissor()
 		end
@@ -244,7 +240,7 @@ function gameA_draw()
 	for i = 1, scorestring:len() - 1 do
 		offsetX = offsetX - 8*scale
 	end
-	love.graphics.print( scorescore, 144*scale + offsetX, 24*scale, 0, scale, scale)
+	love.graphics.print( scorescore, windowheight*scale + offsetX, 24*scale, 0, scale, scale)
 	
 	
 	--"level"--
@@ -268,12 +264,10 @@ function gameA_draw()
 	
 	
 	--FULLSCREEN OFFSET
-	if fullscreen then
-		love.graphics.translate(-fullscreenoffsetX, -fullscreenoffsetY)
-		
-		--scissor
-		love.graphics.setScissor()
-	end
+	love.graphics.translate(-fullscreenoffsetX, -fullscreenoffsetY)
+	
+	--scissor
+	love.graphics.setScissor()
 end
 
 function gameA_update(dt)
@@ -316,28 +310,41 @@ function gameA_update(dt)
 	end
 		
 	if gamestate == "gameA" then
-		if controls.isDown("rotateright") then
+		if clockwise() then
 			if tetribodies[1]:getAngularVelocity() < 3 then
 				tetribodies[1]:applyTorque( 70 )
 			end
 		end
-		if controls.isDown("rotateleft") then
+		if counterclockwise() then
 			if tetribodies[1]:getAngularVelocity() > -3 then
 				tetribodies[1]:applyTorque( -70 )
 			end
 		end
-	
-		if controls.isDown( "left" ) then
+		
+		if prevkey1 == false and clockwise() then
+			love.audio.stop(blockturn)
+			love.audio.play(blockturn)
+		end
+		
+		if prevkey2 == false and counterclockwise() then
+			love.audio.stop(blockturn)
+			love.audio.play(blockturn)
+		end
+		
+		prevkey1 = clockwise()
+		prevkey2 = counterclockwise()
+		
+		if leftkey() then
 			local x, y = tetribodies[1]:getWorldCenter()
 			tetribodies[1]:applyForce( -70, 0, x, y )
 		end
-		if controls.isDown( "right" ) then
+		if rightkey() then
 			local x, y = tetribodies[1]:getWorldCenter()
 			tetribodies[1]:applyForce( 70, 0, x, y )
 		end
 		
 		local x, y = tetribodies[1]:getLinearVelocity( )
-		if controls.isDown( "down" ) then
+		if downkey() then
 			--commented part limits the blackfallspeed
 			if y > 500 then
 				tetribodies[1]:setLinearVelocity(x, 500)
@@ -355,6 +362,12 @@ function gameA_update(dt)
 	endblock = false
 
 	world:update(dt)
+	
+	if destroywall then
+		destroywall = false
+		wallshapes[2]:destroy()
+		wallshapes[2] = nil
+	end
 
 	if endblock then
 		endblockA()
@@ -539,7 +552,9 @@ function removeline(lineno) --Does all necessary things to clear a line. Refines
 				for a = 1, numberofgroups do
 					if a == 1 then --reassign the old bodyid
 						rotation = tetribodies[i-ioffset]:getAngle()
-						tetribodies[i-ioffset]:destroy()
+						if tetribodies[i-ioffset] then
+							tetribodies[i-ioffset]:destroy()
+						end
 						tetribodies[i-ioffset] = love.physics.newBody(world, tetribodies[i-ioffset]:getX(), tetribodies[i-ioffset]:getY(), tetribodies[i-ioffset]:getMass(), blockrot)
 						tetribodies[i-ioffset]:setAngle(rotation)
 						tetrishapes[i-ioffset] = {}
@@ -656,7 +671,7 @@ function cutimage(bodyid, numberofgroups) --cuts the image of a body based on it
 	bodyang = math.mod(bodyang, math.pi)
 	
 	local highestx = -1
-	local lowestx = 160*scale
+	local lowestx = windowwidth*scale
 	for i, v in pairs(tetrishapes[bodyid]) do
 		x1, x2 = getintersectX(v, upperline-0.01)
 		if x1 < lowestx and x1 ~= -1 then
@@ -686,7 +701,7 @@ function cutimage(bodyid, numberofgroups) --cuts the image of a body based on it
 	dummy1, dummy2 = dummy1 + width/2, dummy2 + height/2
 	local point2 = {dummy1, dummy2}	
 	
-	local leftlimit = 160*scale
+	local leftlimit = windowwidth*scale
 	local rightlimit = -1
 	
 	--find out the limits of there's more than 1 body being created
@@ -705,7 +720,7 @@ function cutimage(bodyid, numberofgroups) --cuts the image of a body based on it
 		end
 	else 
 		leftlimit = -1
-		rightlimit = 160*scale
+		rightlimit = windowwidth*scale
 	end
 	
 	local ang = math.atan2(point2[1] - point1[1], point2[2] - point1[2])
@@ -942,9 +957,11 @@ function checklinedensity(active) --checks all 18 lines and, if active == true, 
 		end
 	
 		if removedlines then
+			track("lines_cleared", numberoflines)
 			if numberoflines >= 4 then
 				love.audio.stop(fourlineclear)
 				love.audio.play(fourlineclear)
+				track("tetrises")
 			else
 				love.audio.stop(lineclear)
 				love.audio.play(lineclear)
@@ -978,6 +995,7 @@ function checklinedensity(active) --checks all 18 lines and, if active == true, 
 			averagearea = averagearea / numberoflines / 10240
 			
 			local scoreadd = math.ceil((numberoflines*3)^(averagearea^10)*20+numberoflines^2*40)
+			track("total_score", scoreadd)
 			scorescore = scorescore + scoreadd
 			
 			lastscoreadd = scoreadd
@@ -994,7 +1012,7 @@ function checklinedensity(active) --checks all 18 lines and, if active == true, 
 			
 			--Draw the screen before removing lines.
 			love.graphics.clear()
-			gameA_draw()
+			love.draw()
 			love.graphics.present( )
 			
 			for i = 1, 18 do
@@ -1171,8 +1189,7 @@ function collideA(a, b, coll) --box2d callback. calls endblock.
 					love.audio.play(gameover1)
 				
 					if wallshapes[2] then
-						wallshapes[2]:destroy()
-						wallshapes[2] = nil
+						destroywall = true
 					end
 				else
 					tetrikind[highestbody()+1] = tetrikind[1]
@@ -1206,5 +1223,123 @@ function endblockA() --handles failing, moving the current block to the end of t
 		game_addTetriA()
 		--RANDOMIZE NEXT PIECE
 		nextpiece = math.random(7)
+	end
+end
+
+function clockwise()
+	if love.joystick.isDown(0, 0) then
+		return true
+	end
+	
+	return false
+end
+
+function counterclockwise()
+	if love.joystick.isDown(0, 1) then
+		return true
+	end
+
+	return false
+end
+
+function leftkey()
+	local h = love.joystick.getHat(0, 0)
+	
+	if h == "l" or h == "ld" or h == "lu" then
+		return true
+	end
+	
+	if love.joystick.getAxis(0, 0) < -0.2 then
+		return true
+	end
+	
+	return false
+end
+
+function rightkey()
+	local h = love.joystick.getHat(0, 0)
+	
+	if h == "r" or h == "rd" or h == "ru" then
+		return true
+	end
+	
+	if love.joystick.getAxis(0, 0) > 0.2 then
+		return true
+	end
+	
+	return false
+end
+
+function downkey()
+	local h = love.joystick.getHat(0, 0)
+	
+	if h == "d" or h == "ld" or h == "rd" then
+		return true
+	end
+	
+	if love.joystick.getAxis(0, 1) > 0.2 then
+		return true
+	end
+	
+	return false
+end
+
+function upkey()
+	local h = love.joystick.getHat(0, 0)
+	
+	if h == "u" or h == "lu" or h == "ru" then
+		return true
+	end
+	
+	return false
+end
+
+function love.joystickpressed(joystick, button)
+	button = button + 1
+	
+	if gamestate == "highscoreentry" then
+		if button == 1 then
+			if string.len(highscorename[highscoreno]) < 5 then
+				cursorblink = true
+				highscorename[highscoreno] = highscorename[highscoreno] .. string.sub(whitelist, currentletter, currentletter)
+				love.audio.stop(highscorebeep)
+				love.audio.play(highscorebeep)
+			else
+				highscorename[highscoreno] = highscorename[highscoreno] .. string.sub(whitelist, currentletter, currentletter)
+				gamestate = "menu"
+				savehighscores()
+				if musicchanged == true then
+					love.audio.stop(musichighscore)
+				else
+					love.audio.stop(highscoreintro)
+				end
+				if musicno < 4 then
+					love.audio.play(music[musicno])
+				end
+			end
+		elseif button == 2 then
+			if highscorename[highscoreno]:len() > 0 then
+				cursorblink = true
+				highscorename[highscoreno] = string.sub(highscorename[highscoreno], 1, highscorename[highscoreno]:len()-1)
+			end
+		elseif button == 4 then
+			gamestate = "menu"
+			savehighscores()
+			if musicchanged == true then
+				love.audio.stop(musichighscore)
+			else
+				love.audio.stop(highscoreintro)
+			end
+			if musicno < 4 then
+				love.audio.play(music[musicno])
+			end
+		end
+	elseif gamestate == "failed" then
+		love.audio.stop(gameover2)
+		rocket_load()
+	elseif gamestate == "menu" then
+		if button == 1 or button == 4 then
+			gameA_load()
+		end
 	end
 end

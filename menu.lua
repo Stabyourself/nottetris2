@@ -25,9 +25,7 @@ end
 
 function menu_draw()
 	--FULLSCREEN OFFSET
-	if fullscreen then
-		love.graphics.translate(fullscreenoffsetX, fullscreenoffsetY)
-	end
+	love.graphics.translate(fullscreenoffsetX, fullscreenoffsetY)
 
 	if gamestate == "logo" then		
 		if logotime <= logoduration then
@@ -140,37 +138,19 @@ function menu_draw()
 			love.graphics.print( p2wins, 129*scale, 31*scale, 0, scale)
 		end
 	end
-	
-	if gamestate == "menu" or gamestate == "highscoreentry" then
-		for i = 1, 3 do
-			if tonumber(highscore[i]) > 0 then
-				--name
-				love.graphics.print(string.lower(string.sub(highscorename[i], 1, 6)), 33*scale, 110*scale+8*scale*(i-1), 0, scale)
-				--score
-				offsetX = 0
-				for i = 1, string.sub(tostring(highscore[i]), 1, 6):len() - 1 do
-					offsetX = offsetX - 8*scale
-				end
-				love.graphics.print(string.sub(tostring(highscore[i]), 1, 6), 137*scale+offsetX, 110*scale+8*scale*(i-1), 0, scale)
-			end
-		end
-	end
-	
+		
 	if gamestate == "highscoreentry" then
-		if highscorename[highscoreno]:len() < 6 then
-			offsetX = 0
-			for i = 1, highscorename[highscoreno]:len() do
-				offsetX = offsetX + 8*scale
-			end
-			if cursorblink == true then
-				love.graphics.print("_", 33*scale+offsetX, 110*scale+8*scale*(highscoreno-1), 0, scale)
-			else
-				love.graphics.print(" ", 33*scale+offsetX, 110*scale+8*scale*(highscoreno-1), 0, scale)
-			end
+		--name
+		love.graphics.print(string.lower(string.sub(highscorename[highscoreno], 1, 6)), 33*scale, 110*scale, 0, scale)
+		--score
+		local offsetX = tostring(highscore[highscoreno]):len()*8*scale
+		love.graphics.print(string.sub(tostring(highscore[highscoreno]), 1, 6), 145*scale-offsetX, 110*scale, 0, scale)
+	
+		local offsetX = string.len(highscorename[highscoreno]) * 8*scale
+		if cursorblink == true then
+			love.graphics.print(string.sub(whitelist, currentletter, currentletter), 33*scale+offsetX, 110*scale, 0, scale)
 		else
-			if cursorblink == true then
-				love.graphics.print("_", 33*scale+8*scale*5, 110*scale+8*scale*(highscoreno-1), 0, scale)
-			end
+			love.graphics.print(" ", 33*scale+offsetX, 110*scale, 0, scale)
 		end
 	end
 	
@@ -209,6 +189,9 @@ function menu_draw()
 		end
 		
 	end
+	
+	
+	love.graphics.translate(-fullscreenoffsetX, -fullscreenoffsetY)
 	------------------------------------------
 end
 
@@ -233,7 +216,6 @@ function menu_update(dt)
 		currenttime = love.timer.getTime()
 		if currenttime - oldtime > creditsdelay then
 			gamestate = "title"
-			love.graphics.setBackgroundColor( 0, 0, 0)
 			love.audio.play(musictitle)
 		end
 	end
@@ -283,5 +265,39 @@ function menu_update(dt)
 				love.audio.play(musichighscore)
 			end
 		end
+		
+		if hatstate then
+			local c = getHat()
+			
+			if c == "u" and hatstate ~= "u" then
+				currentletter = currentletter + 1
+				if currentletter > string.len(whitelist) then
+					currentletter = 1
+				end
+				cursorblink = true
+				oldtime = love.timer.getTime()
+			elseif c == "d" and hatstate ~= "d" then
+				currentletter = currentletter - 1
+				if currentletter < 1 then
+					currentletter = string.len(whitelist)
+				end
+				cursorblink = true
+				oldtime = love.timer.getTime()
+			end
+		end
+	end
+	
+	hatstate = getHat()
+end
+
+function getHat()
+	local x, y = love.joystick.getAxis( 0, 0 ), love.joystick.getAxis( 0, 1 )
+	
+	if y < -0.2 then
+		return "u"
+	elseif y > 0.2 then
+		return "d"
+	else
+		return "c"
 	end
 end

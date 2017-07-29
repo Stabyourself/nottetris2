@@ -7,12 +7,10 @@ end
 
 function failed_draw()
 	--FULLSCREEN OFFSET
-	if fullscreen then
 		love.graphics.translate(fullscreenoffsetX, fullscreenoffsetY)
 		
 		--scissor
-		love.graphics.setScissor(fullscreenoffsetX, fullscreenoffsetY, 160*scale, 144*scale)
-	end
+		love.graphics.setScissor(fullscreenoffsetX, fullscreenoffsetY, windowwidth*scale, windowheight*scale)
 	
 	if gameno == 1 then
 		love.graphics.draw(gamebackgroundcutoff, 0, 0, 0, scale)
@@ -30,7 +28,7 @@ function failed_draw()
 	for i = 1, scorestring:len() - 1 do
 		offsetX = offsetX - 8*scale
 	end
-	love.graphics.print( scorescore, 144*scale + offsetX, 24*scale, 0, scale)
+	love.graphics.print( scorescore, windowheight*scale + offsetX, 24*scale, 0, scale)
 	
 	
 	--"level"--
@@ -54,12 +52,10 @@ function failed_draw()
 	
 	
 	--FULLSCREEN OFFSET
-	if fullscreen then
 		love.graphics.translate(-fullscreenoffsetX, -fullscreenoffsetY)
 		
 		--scissor
 		love.graphics.setScissor()
-	end
 end
 
 function failed_update()
@@ -70,18 +66,14 @@ function failed_checkhighscores()
 	highscoreno = 0
 	selectblink = true
 	oldtime = love.timer.getTime()
-	for i = 1, 3 do
+	for i = 1, highscorecount do
 		if scorescore > highscore[i] then
-			if i == 1 then
-				highscore[3] = highscore[2]
-				highscore[2] = highscore[1]
-				highscorename[3] = highscorename[2]
-				highscorename[2] = highscorename[1]
-			elseif i == 2 then
-				highscore[3] = highscore[2]
-				highscorename[3] = highscorename[2]
+			track("new_highscores")
+			for j = highscorecount-1, i, -1 do
+				highscore[j+1] = highscore[j]
+				highscorename[j+1] = highscorename[j]
 			end
-				
+			currentletter = 1
 			highscoreno = i
 			highscorename[i] = ""
 			highscore[i] = scorescore
@@ -99,4 +91,5 @@ function failed_checkhighscores()
 			love.audio.play(music[musicno])
 		end
 	end
+	savetrack()
 end
