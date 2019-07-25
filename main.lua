@@ -16,15 +16,6 @@ function love.run()
 	while true do
 		love.timer.step()
 		dt = love.timer.getDelta()
-		while dtpassed < targetdt do
-			love.timer.sleep(1)
-			love.timer.step()
-			dt = love.timer.getDelta()
-			dtpassed = dtpassed + dt
-		end
-		
-		dtpassed = dtpassed - targetdt
-		dt = targetdt
 		
 		if love.update then love.update(dt) end -- will pass 0 if love.timer is disabled
 		if love.graphics then
