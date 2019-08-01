@@ -1,12 +1,11 @@
 function love.load()
 	--requires--
-	require "controls"
-	require "gameB"
-	require "gameBmulti"
-	require "gameA"
-	require "menu"
-	require "failed"
-	require "rocket"
+	require "gameB.lua"
+	require "gameBmulti.lua"
+	require "gameA.lua"
+	require "menu.lua"
+	require "failed.lua"
+	require "rocket.lua"
 
 	vsync = true
 
@@ -24,10 +23,10 @@ function love.load()
 
 	if fullscreen == false then
 		if scale ~= 5 then
-			love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+			love.graphics.setMode( 160*scale, 144*scale, false, vsync, 16 )
 		end
 	else
-		love.graphics.setMode( 0, 0, true, vsync, 0 )
+		love.graphics.setMode( 0, 0, true, vsync, 16 )
 		love.mouse.setVisible( false )
 		desktopwidth, desktopheight = love.graphics.getWidth(), love.graphics.getHeight()
 		saveoptions()
@@ -161,7 +160,6 @@ function love.load()
 	minfps = 1/50 --dt doesn't go higher than this
 	scoreaddtime = 0.5
 	startdelaytime = 0
-	density = 0.1
 
 	blockstartY = -64 --where new blocks are created
 	losingY = 0 --lose if block 1 collides above this line
@@ -191,7 +189,6 @@ function love.load()
 	piececenterpreview[7] = {13, 9}
 
 	loadhighscores()
-	loadconfig()
 
 	loadimages()
 
@@ -501,33 +498,6 @@ function changevolume(i)
 	newlevel:setVolume( 0.6*i )
 end
 
-function loadconfig()
-	--standard controls
-	--[[controls = {}
-	controls["left"] = {"left"}
-	controls["right"] = {"right"}
-	controls["down"] = {"down"}
-	controls["rotateleft"] = {"y", "z", "w"}
-	controls["rotateright"] = {"x"}
-
-	controls["p1left"] = {"a"}
-	controls["p1right"] = {"d"}
-	controls["p1down"] = {"s"}
-	controls["p1rotateleft"] = {"g"}
-	controls["p1rotateright"] = {"h"}
-
-	controls["p2left"] = {"left"}
-	controls["p2right"] = {"right"}
-	controls["p2down"] = {"down"}
-	controls["p2rotateleft"] = {"kp1"}
-	controls["p2rotateright"] = {"kp2"}
-
-	local keys = {"left", "right", "down", "rotateleft", "rotateright", "p1left", "p1right", "p1down", "p1rotateleft", "p1rotateright", "p2left", "p2right", "p2down", "p2rotateleft", "p2rotateright"}
-
-
-	print(unpack(controls["left"]))--]]
-end
-
 function loadoptions()
 	if love.filesystem.exists("options.txt") then
 		local s = love.filesystem.read("options.txt")
@@ -609,7 +579,7 @@ function togglefullscreen(fullscr)
 	if fullscr == false then
 		scale = suggestedscale
 		physicsscale = scale/4
-		love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+		love.graphics.setMode( 160*scale, 144*scale, false, vsync, 16 )
 	else
 		love.graphics.setMode( 0, 0, true, vsync, 16 )
 		desktopwidth, desktopheight = love.graphics.getWidth(), love.graphics.getHeight()
@@ -685,22 +655,12 @@ function savehighscores()
 end
 
 function changescale(i)
-	love.graphics.setMode( 160*i, 144*i, false, vsync, 0 )
+	love.graphics.setMode( 160*i, 144*i, false, vsync, 16 )
 	nextpieceimg = {}
 	for j = 1, 7 do
 		nextpieceimg[j] = newPaddedImage( "graphics/pieces/"..j..".png", i )
 	end
 	physicsscale = i/4
-end
-
-function isElement(t, value)
-	for i, v in pairs(t) do
-		if v == value then
-			return true
-		end
-	end
-
-	return false
 end
 
 function string:split(delimiter)
@@ -790,31 +750,28 @@ end
 
 function love.keypressed( key, unicode )
 	if gamestate == nil then
-		if controls.check("return", key) then
+		if key == "return" then
 			gamestate = "title"
 			love.graphics.setBackgroundColor( 0, 0, 0)
 			love.audio.play(musictitle)
-			oldtime = love.timer.getTime()
 		end
 
 	elseif gamestate == "logo" then
-		if controls.check("return", key) then
+		if key == "return" then
 			gamestate = "title"
 			love.graphics.setBackgroundColor( 0, 0, 0)
 			love.audio.play(musictitle)
-			oldtime = love.timer.getTime()
 		end
 
 	elseif gamestate == "credits" then
-		if controls.check("return", key) then
+		if key == "return" then
 			gamestate = "title"
 			love.graphics.setBackgroundColor( 0, 0, 0)
 			love.audio.play(musictitle)
-			oldtime = love.timer.getTime()
 		end
 
 	elseif gamestate == "title" then
-		if controls.check("return", key) then
+		if key == "return" then
 			if playerselection ~= 3 then
 				if soundenabled then
 					love.audio.stop(musictitle)
@@ -835,17 +792,17 @@ function love.keypressed( key, unicode )
 				end
 				optionsselection = 1
 			end
-		elseif controls.check("escape", key) then
+		elseif key == "escape" then
 			love.event.push("q")
-		elseif controls.check("left", key) and playerselection > 1 then
+		elseif key == "left" and playerselection > 1 then
 			playerselection = playerselection - 1
-		elseif controls.check("right", key) and playerselection < 3 then
+		elseif key == "right" and playerselection < 3 then
 			playerselection = playerselection + 1
 		end
 
 	elseif gamestate == "menu" then
 		oldmusicno = musicno
-		if controls.check("escape", key) then
+		if key == "escape" then
 			if musicno < 4 then
 				love.audio.stop(music[musicno])
 			end
@@ -856,25 +813,25 @@ function love.keypressed( key, unicode )
 			end
 		elseif key == "backspace" then
 			newhighscores()
-		elseif controls.check("return", key) then
+		elseif key == "return" then
 			if gameno == 1 then
 				gameA_load()
 			else
 				gameB_load()
 			end
-		elseif controls.check("left", key) then
+		elseif key == "left" then
 			if selection == 2 or selection == 4 or selection == 6 then
 				selection = selection - 1
 				selectblink = true
 				oldtime = love.timer.getTime()
 			end
-		elseif controls.check("right", key) then
+		elseif key == "right" then
 			if selection == 1 or selection == 3 or selection == 5 then
 				selection = selection + 1
 				selectblink = true
 				oldtime = love.timer.getTime()
 			end
-		elseif controls.check("up", key) then
+		elseif key == "up" then
 			if selection == 3 or selection == 4 or selection == 5 or selection == 6 then
 				selection = selection - 2
 				selectblink = true
@@ -889,7 +846,7 @@ function love.keypressed( key, unicode )
 				selectblink = false
 				oldtime = love.timer.getTime()
 			end
-		elseif controls.check("down", key) then
+		elseif key == "down" then
 			if selection == 1 or selection == 2 or selection == 3 or selection == 4 then
 				selection = selection + 2
 				selectblink = true
@@ -905,7 +862,7 @@ function love.keypressed( key, unicode )
 				oldtime = love.timer.getTime()
 			end
 		end
-		if selection > 2 and not controls.check("escape", key) then
+		if selection > 2 and key ~= "escape" then
 			musicno = selection - 2
 			if oldmusicno ~= musicno and oldmusicno ~= 4 then
 				love.audio.stop(music[oldmusicno])
@@ -913,13 +870,13 @@ function love.keypressed( key, unicode )
 			if musicno < 4 then
 				love.audio.play(music[musicno])
 			end
-		elseif not controls.check("escape", key) then
+		elseif key ~= "escape" then
 			gameno = selection
 			loadhighscores()
 		end
 
 	elseif gamestate == "options" then
-		if controls.check("escape", key) then
+		if key == "escape" then
 			if soundenabled then
 				love.audio.stop(musicoptions)
 				love.audio.stop(musictitle)
@@ -928,7 +885,7 @@ function love.keypressed( key, unicode )
 			saveoptions()
 			loadimages()
 			gamestate = "title"
-		elseif controls.check("down", key) then
+		elseif key == "down" then
 			optionsselection = optionsselection + 1
 			if optionsselection > #optionschoices then
 				optionsselection = 1
@@ -936,7 +893,7 @@ function love.keypressed( key, unicode )
 			selectblink = true
 			oldtime = love.timer.getTime()
 
-		elseif controls.check("up", key) then
+		elseif key == "up" then
 			optionsselection = optionsselection - 1
 			if optionsselection == 0 then
 				optionsselection = #optionschoices
@@ -944,7 +901,7 @@ function love.keypressed( key, unicode )
 			selectblink = true
 			oldtime = love.timer.getTime()
 
-		elseif controls.check("left", key) then
+		elseif key == "left" then
 			if optionsselection == 1 then
 				if volume >= 0.1 then
 					volume = volume - 0.1
@@ -969,7 +926,7 @@ function love.keypressed( key, unicode )
 
 			end
 
-		elseif controls.check("right", key) then
+		elseif key == "right" then
 			if optionsselection == 1 then
 				if volume <= 0.9 then
 					volume = volume + 0.1
@@ -991,7 +948,7 @@ function love.keypressed( key, unicode )
 
 			end
 
-		elseif controls.check("return", key) then
+		elseif key == "return" then
 			if optionsselection == 1 then
 				volume = 1
 				changevolume(volume)
@@ -1016,28 +973,28 @@ function love.keypressed( key, unicode )
 
 	elseif gamestate == "multimenu" then
 		oldmusicno = musicno
-		if controls.check("escape", key) then
+		if key == "escape" then
 			if musicno < 4 then
 				love.audio.stop(music[musicno])
 			end
 			gamestate = "title"
 			love.audio.stop(musictitle)
 			love.audio.play(musictitle)
-		elseif controls.check("return", key) then
+		elseif key == "return" then
 			gameBmulti_load()
-		elseif controls.check("left", key) then
+		elseif key == "left" or key == "a" then
 			if selection == 2 or selection == 4 or selection == 6 then
 				selection = selection - 1
 				selectblink = true
 				oldtime = love.timer.getTime()
 			end
-		elseif controls.check("right", key) then
+		elseif key == "right" or key == "d" then
 			if selection == 1 or selection == 3 or selection == 5 then
 				selection = selection + 1
 				selectblink = true
 				oldtime = love.timer.getTime()
 			end
-		elseif controls.check("up", key) then
+		elseif key == "up" or key == "w" then
 			if selection == 3 or selection == 4 or selection == 5 or selection == 6 then
 				selection = selection - 2
 				selectblink = true
@@ -1052,7 +1009,7 @@ function love.keypressed( key, unicode )
 				selectblink = false
 				oldtime = love.timer.getTime()
 			end
-		elseif controls.check("down", key) then
+		elseif key == "down" or key == "s" then
 			if selection == 1 or selection == 2 or selection == 3 or selection == 4 then
 				selection = selection + 2
 				selectblink = true
@@ -1068,7 +1025,7 @@ function love.keypressed( key, unicode )
 				oldtime = love.timer.getTime()
 			end
 		end
-		if selection > 2 and not controls.check("return", key) and not controls.check("escape", key) then
+		if selection > 2 and key ~= "return" and key ~= "escape" then
 			musicno = selection - 2
 			if oldmusicno ~= musicno and oldmusicno ~= 4 then
 				love.audio.stop(music[oldmusicno])
@@ -1076,14 +1033,14 @@ function love.keypressed( key, unicode )
 			if musicno < 4 then
 				love.audio.play(music[musicno])
 			end
-		elseif not controls.check("return", key) and not controls.check("escape", key) then
+		elseif key ~= "return" and key ~= "escape" then
 			gameno = selection
 			loadhighscores()
 		end
 
 	elseif gamestate == "gameA" or gamestate == "gameB" or gamestate == "failingA" or gamestate == "failingB" then
 
-		if controls.check("return", key) then
+		if key == "return" then
 			pause = not pause
 
 			if pause == true then
@@ -1099,7 +1056,7 @@ function love.keypressed( key, unicode )
 			end
 		end
 		if gamestate == "gameA" or gamestate == "gameB" then
-			if controls.check("escape", key) then
+			if key == "escape" then
 				oldtime = love.timer.getTime()
 				gamestate = "menu"
 			end
@@ -1108,17 +1065,17 @@ function love.keypressed( key, unicode )
 				--if key == "up" then --STOP ROTATION OF BLOCK (makes it too easy..)
 				--	tetribodies[counter]:setAngularVelocity(0)
 				--end
-				if controls.check("left", key) or controls.check("right", key) then
+				if key == "left" or key == "right" then
 					love.audio.stop(blockmove)
 					love.audio.play(blockmove)
-				elseif controls.check("rotateleft", key) or controls.check("rotateright", key) then
+				elseif key == "y" or key == "z" or key == "w" or key == "x" then
 					love.audio.stop(blockturn)
 					love.audio.play(blockturn)
 				end
 			end
 		end
 	elseif gamestate == "gameBmulti" and gamestarted == false then
-		if controls.check("escape", key) then
+		if key == "escape" then
 			if not fullscreen then
 				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
 			end
@@ -1128,22 +1085,28 @@ function love.keypressed( key, unicode )
 			end
 		end
 	elseif gamestate == "gameBmulti" and gamestarted == true then
-		if controls.check("escape", key) then
+		if key == "escape" then
 			if not fullscreen then
 				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
 			end
 			gamestate = "multimenu"
 		end
-		if controls.check("left", key) or controls.check("right", key) or controls.check("leftp2", key) or controls.check("rightp2", key) then
+		if key == "a" or key == "d" then
 			love.audio.stop(blockmove)
 			love.audio.play(blockmove)
-		elseif controls.check("rotateleft", key) or controls.check("rotateright", key) or controls.check("rotaterightp2", key) or controls.check("rotateleftp2", key) then
+		elseif key == "left" or key == "right" then
+			love.audio.stop(blockmove)
+			love.audio.play(blockmove)
+		elseif key == "g" or key == "h" then
+			love.audio.stop(blockturn)
+			love.audio.play(blockturn)
+		elseif key == "kp1" or key == "kp2" then
 			love.audio.stop(blockturn)
 			love.audio.play(blockturn)
 		end
 
 	elseif gamestate == "gameBmulti_results" then
-		if controls.check("return", key) or controls.check("escape", key) then
+		if key == "return" or key == "escape" then
 			if musicno < 4 then
 				love.audio.stop(musicresults)
 				love.audio.play(music[musicno])
@@ -1155,12 +1118,12 @@ function love.keypressed( key, unicode )
 		end
 
 	elseif gamestate == "failed" then
-		if controls.check("return", key) or controls.check("escape", key) then
+		if key == "return" or key == "y" or key == "z" or key == "x" or key == "w" or key == "left" or key == "down" or key == "up" or key == "right" then
 			love.audio.stop(gameover2)
 			rocket_load()
 		end
 	elseif gamestate == "highscoreentry" then
-		if controls.check("return", key) then
+		if key == "return" then
 			gamestate = "menu"
 			savehighscores()
 			if musicchanged == true then
@@ -1186,7 +1149,7 @@ function love.keypressed( key, unicode )
 			end
 		end
 	elseif string.sub(gamestate, 1, 6) == "rocket" then
-		if controls.check("return", key) then
+		if key == "return" then
 			love.audio.stop(musicrocket1to3)
 			love.audio.stop(musicrocket4)
 			failed_checkhighscores()

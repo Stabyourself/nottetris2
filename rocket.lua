@@ -1,10 +1,10 @@
 function rocket_load()
 	rocketscores = {}
 	if gameno == 1 then
-		rocketscores[1] = 3000
-		rocketscores[2] = 7000
-		rocketscores[3] = 11000
-		rocketscores[4] = 15000
+		rocketscores[1] = 5000
+		rocketscores[2] = 10000
+		rocketscores[3] = 15000
+		rocketscores[4] = 20000
 	else
 		rocketscores[1] = 3200
 		rocketscores[2] = 3400

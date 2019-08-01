@@ -21,7 +21,7 @@ function gameA_load()
 
 	--PHYSICS--
 	meter = 30
-	world = love.physics.newWorld(0, -720, 960, 1200, 0, 500, true )
+	world = love.physics.newWorld(0, -720, 960, 1050, 0, 500, true )
 
 	tetrikind = {}
 	wallshapes = {}
@@ -224,7 +224,7 @@ function gameA_draw()
 		end
 
 		love.graphics.setColor(color, color, color)
-		love.graphics.rectangle("fill", 0, (i-1)*8*scale, math.floor(8*scale*fullness), 8*scale)
+		love.graphics.rectangle("fill", 0, (i-1)*8*scale, math.floor(6*scale*fullness), 8*scale)
 	end
 
 	love.graphics.setColor(255, 255, 255)
@@ -316,28 +316,28 @@ function gameA_update(dt)
 	end
 
 	if gamestate == "gameA" then
-		if controls.isDown("rotateright") then
+		if love.keyboard.isDown( "x" ) then
 			if tetribodies[1]:getAngularVelocity() < 3 then
 				tetribodies[1]:applyTorque( 70 )
 			end
 		end
-		if controls.isDown("rotateleft") then
+		if love.keyboard.isDown( "y" ) or love.keyboard.isDown( "z" ) or love.keyboard.isDown( "w" ) then
 			if tetribodies[1]:getAngularVelocity() > -3 then
 				tetribodies[1]:applyTorque( -70 )
 			end
 		end
 
-		if controls.isDown( "left" ) then
+		if love.keyboard.isDown( "left" ) then
 			local x, y = tetribodies[1]:getWorldCenter()
 			tetribodies[1]:applyForce( -70, 0, x, y )
 		end
-		if controls.isDown( "right" ) then
+		if love.keyboard.isDown( "right" ) then
 			local x, y = tetribodies[1]:getWorldCenter()
 			tetribodies[1]:applyForce( 70, 0, x, y )
 		end
 
 		local x, y = tetribodies[1]:getLinearVelocity( )
-		if controls.isDown( "down" ) then
+		if love.keyboard.isDown( "down" ) then
 			--commented part limits the blackfallspeed
 			if y > 500 then
 				tetribodies[1]:setLinearVelocity(x, 500)
@@ -489,25 +489,21 @@ function removeline(lineno) --Does all necessary things to clear a line. Refines
 			--create for either above our below; or both if body is cut in center.
 			--gotta set the bodyids here and reuse them in the "check for disconnect shapes" further down
 			for a, b in pairs(tetrishapes[i-ioffset]) do --remove all shapes
-				if tetrishapes[i-ioffset][a] then
-					tetrishapes[i-ioffset][a]:destroy()
-					tetrishapes[i-ioffset][a] = nil
-				end
+				tetrishapes[i-ioffset][a]:destroy()
+				tetrishapes[i-ioffset][a] = nil
 			end
 
 			tetrishapes[i-ioffset] = {}
 
 			if #tetrishapescopy == 0 then --body empty
-				if tetribodies[i-ioffset] then
-					tetribodies[i-ioffset]:destroy()
-					table.remove(tetribodies, i-ioffset)
-					table.remove(tetrishapes, i-ioffset)
-					table.remove(tetrikind, i-ioffset)
-					table.remove(tetriimages, i-ioffset)
-					table.remove(tetriimagedata, i-ioffset)
-					numberofbodies = numberofbodies - 1
-					ioffset = ioffset + 1
-				end
+				tetribodies[i-ioffset]:destroy()
+				table.remove(tetribodies, i-ioffset)
+				table.remove(tetrishapes, i-ioffset)
+				table.remove(tetrikind, i-ioffset)
+				table.remove(tetriimages, i-ioffset)
+				table.remove(tetriimagedata, i-ioffset)
+				numberofbodies = numberofbodies - 1
+				ioffset = ioffset + 1
 			else
 
 				----check for disconnected shapes
@@ -633,10 +629,8 @@ function removeline(lineno) --Does all necessary things to clear a line. Refines
 
 			--clean up the tables..
 			for a, b in pairs(tetrishapescopy) do
-				if tetrishapescopy[a] then
-					tetrishapescopy[a]:destroy()
-					tetrishapescopy[a] = nil
-				end
+				tetrishapescopy[a]:destroy()
+				tetrishapescopy[a] = nil
 			end
 
 			tetrishapescopy = {}
@@ -927,12 +921,12 @@ function checklinedensity(active) --checks all 18 lines and, if active == true, 
 						end
 					end
 
-					--[[for j, k in pairs(tetribodies) do --CANCEL ALL BLOCK MOVEMENT
+					for j, k in pairs(tetribodies) do
 						if k.setLinearVelocity then
 							k:setLinearVelocity(0, 0)
 							k:setAngularVelocity(0, 0)
 						end
-					end]]
+					end
 				end
 
 				linesremoved[i] = true
@@ -1170,10 +1164,8 @@ function collideA(a, b, coll) --box2d callback. calls endblock.
 					love.audio.stop(gameover1)
 					love.audio.play(gameover1)
 
-					if wallshapes[2] then
-						wallshapes[2]:destroy()
-						wallshapes[2] = nil
-					end
+					wallshapes[2]:destroy()
+					wallshapes[2] = nil
 				else
 					tetrikind[highestbody()+1] = tetrikind[1]
 
