@@ -46,7 +46,7 @@ function menu_draw()
 	elseif gamestate == "title" then----------
 		love.graphics.draw(title, 0, 0, 0, scale)
 		love.graphics.rectangle("fill", 20*scale, 64*scale, 16*8*scale, 8*scale)
-		love.graphics.print("terror-instinct", 20*scale, 64*scale, 0, scale)
+		love.graphics.print("cursed-edition", 24*scale, 64*scale, 0, scale)
 	if playerselection == 1 then
 		love.graphics.print(">", 1*scale, 124*scale, 0, scale)
 	elseif playerselection == 2 then
