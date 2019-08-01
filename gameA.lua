@@ -224,7 +224,7 @@ function gameA_draw()
 		end
 
 		love.graphics.setColor(color, color, color)
-		love.graphics.rectangle("fill", 0, (i-1)*8*scale, math.floor(6*scale*fullness), 8*scale)
+		love.graphics.rectangle("fill", 0, (i-1)*8*scale, math.floor(8*scale*fullness), 8*scale)
 	end
 
 	love.graphics.setColor(255, 255, 255)
