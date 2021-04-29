@@ -1,11 +1,15 @@
-local newRectangleFixture = function(body, ...)
+local newRectangleFixture = function(body, udata, ...)
 	local shape = love.physics.newRectangleShape(...)
-	return love.physics.newFixture(body, shape, density)
+	local fixture = love.physics.newFixture(body, shape, density)
+	fixture:setUserData(udata)
+	return fixture
 end
 
-local newPolygonFixture = function(body, ...)
+local newPolygonFixture = function(body, udata, ...)
 	local shape = love.physics.newPolygonShape(...)
-	return love.physics.newFixture(body, shape, density)
+	local fixture = love.physics.newFixture(body, shape, density)
+	fixture:setUserData(udata)
+	return fixture
 end
 
 local newBody = function(world, x, y, inertia)
@@ -29,8 +33,7 @@ local function newTetriFixture(body, kind, udata)
 	local fixtures = {}
 	
 	for i = 1, #s / 2 do
-		local fixture = newRectangleFixture(body, s[2 * i - 1], s[2 * i], 32, 32)
-		fixture:setUserData(udata)
+		local fixture = newRectangleFixture(body, udata, s[2 * i - 1], s[2 * i], 32, 32)
 		fixtures[i] = fixture
 	end
 	return fixtures
@@ -52,24 +55,22 @@ function gameB_load()
 	meter = 1
 	world = love.physics.newWorld(0, 500, true)
 	
-	walls = {}
-	
 	tetribodies = {}
 	
-	walls = {}
-	walls.body = love.physics.newBody(world, 32, -64, "static") --WALLS
-	walls.fixture_l = newPolygonFixture(walls.body, 0, -64, 0,672, 32,672, 32,-64)
-	walls.fixture_r = newPolygonFixture(walls.body, 352,-64, 352,672, 384,672, 384,-64)
-	walls.fixture_g = newPolygonFixture(walls.body, 24,640, 24,672, 352,672, 352,640)
-	walls.fixture_c = newPolygonFixture(walls.body, -8,-96, 384,-96, 384,-64, -8,-64)
+	local wbody = love.physics.newBody(world, 32, -64, "static") --WALLS
 	
-	walls.fixture_l:setUserData("left")
-	walls.fixture_l:setFriction(0.00001)
-	walls.fixture_r:setUserData("right")
-	walls.fixture_r:setFriction(0.00001)
+	local wfleft    = newPolygonFixture(wbody, "left",    0, -64, 0,672, 32,672, 32,-64)
+	local wfright   = newPolygonFixture(wbody, "right",   352,-64, 352,672, 384,672, 384,-64)
+	local wfground  = newPolygonFixture(wbody, "ground",  24,640, 24,672, 352,672, 352,640)
+	local wfceiling = newPolygonFixture(wbody, "ceiling", -8,-96, 384,-96, 384,-64, -8,-64)
+		
+	wfleft:setFriction(0.00001)
+	wfright:setFriction(0.00001)
 	
-	walls.fixture_g:setUserData("ground")
-	walls.fixture_c:setUserData("ceiling")
+	wall = {
+		body = wbody,
+		fixtures = {left = wfleft, right = wfright, ground = wfground, ceiling = wfceiling},
+	}
 	
 	world:setCallbacks(collideB)
 	-----------
@@ -102,6 +103,33 @@ function createtetriB(i, uniqueid, x, y)
 	body:setBullet(true)
 	
 	tetribodies[uniqueid] = {body = body, kind = kind, fixtures = fixtures, image = image}
+end
+
+local function gameB_debugdraw()
+	if gamestate ~= "gameB" then return end
+	
+	love.graphics.scale(physicsscale)
+
+	love.graphics.setColor(1, 0, 0)
+	
+	local wbody = wall.body
+	for k, f in pairs(wall.fixtures) do
+		local shape = f:getShape()
+		love.graphics.polygon("line", wbody:getWorldPoints(shape:getPoints()))
+	end
+	
+	for i,v in pairs(tetribodies) do
+		local body = v.body
+		local x, y = body:getWorldCenter( )
+		love.graphics.circle("line", x, y, 5)
+		for k, f in pairs(v.fixtures) do
+			local shape = f:getShape()
+			love.graphics.polygon("line", body:getWorldPoints(shape:getPoints()))
+		end
+	end
+	
+	love.graphics.scale(1 / physicsscale)
+	love.graphics.setColor(1, 1, 1)
 end
 
 function gameB_draw()
@@ -167,17 +195,7 @@ function gameB_draw()
 	love.graphics.setColor(1, 0, 0)
 
 	--DEBUG--
-		love.graphics.scale(physicsscale)
-		for i, v in pairs(tetribodies) do
-			local body = v.body
-			local x, y = body:getWorldCenter( )
-			love.graphics.circle("line", x, y, 5)
-			for k, f in pairs(v.fixtures) do
-				local shape = f:getShape()
-				love.graphics.polygon("line", body:getWorldPoints(shape:getPoints()))
-			end
-		end
-		love.graphics.scale(1/physicsscale)
+	gameB_debugdraw()
 		
 	love.graphics.setColor(1, 1, 1)
 	
@@ -275,8 +293,8 @@ function endblockB()
 		love.audio.stop(gameover1)
 		love.audio.play(gameover1)
 	
-		wallshapes[2]:destroy()
-		wallshapes[2] = nil
+		wall.fixtures.ground:destroy()
+		wall.fixtures.ground = nil
 	else
 		--Transfer block from 1 to end of tetribodies
 		local hb = highestbody()

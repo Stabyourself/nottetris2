@@ -1,11 +1,15 @@
-local newRectangleFixture = function(body, ...)
+local newRectangleFixture = function(body, udata, ...)
 	local shape = love.physics.newRectangleShape(...)
-	return love.physics.newFixture(body, shape, density)
+	local fixture = love.physics.newFixture(body, shape, density)
+	fixture:setUserData(udata)
+	return fixture
 end
 
-local newPolygonFixture = function(body, ...)
+local newPolygonFixture = function(body, udata, ...)
 	local shape = love.physics.newPolygonShape(...)
-	return love.physics.newFixture(body, shape, density)
+	local fixture = love.physics.newFixture(body, shape, density)
+	fixture:setUserData(udata)
+	return fixture
 end
 
 local newBody = function(world, x, y, inertia)
@@ -29,9 +33,8 @@ local function newTetriFixture(body, kind, udata, mask)
 	local fixtures = {}
 	
 	for i = 1, #s / 2 do
-		local fixture = newRectangleFixture(body, s[2 * i - 1], s[2 * i], 32, 32)
-		fixture:setUserData(udata)
-		fixture:setUserData(udata)
+		local fixture = newRectangleFixture(body, udata, s[2 * i - 1], s[2 * i], 32, 32)
+		fixture:setMask(mask)
 		fixtures[i] = fixture
 	end
 	return fixtures
@@ -54,7 +57,6 @@ function gameBmulti_load()
 		mpscale = mpscale - 1
 	end
 	physicsmpscale = mpscale/4
-	print(mpscale, physicsmpscale)
 	
 	mpfullscreenoffsetX = (desktopwidth-274*mpscale)/2
 	mpfullscreenoffsetY = (desktopheight-144*mpscale)/2
@@ -103,6 +105,7 @@ function gameBmulti_load()
 	tetribodiesp1 = {}
 	tetribodiesp2 = {}
 	
+	--[[
 	--WALLS P1--
 	wallbodiesp1 = love.physics.newBody(world, 32, -64, "static")
 	wallshapesp1 = {}
@@ -134,6 +137,35 @@ function gameBmulti_load()
 	
 	wallshapesp2[2] = newPolygonFixture( wallbodiesp2,516,640, 516,672, 836,672, 836,640)
 	wallshapesp2[2]:setUserData("groundp2")
+	]]
+	
+	local wbodyp1 = love.physics.newBody(world, 32, -64, "static") --WALLS P1
+	
+	local wfleftp1    = newPolygonFixture(wbodyp1, "leftp1",    164, 0, 164,672, 196,672, 196, 0)
+	local wfrightp1   = newPolygonFixture(wbodyp1, "rightp1",   516,0, 516,672, 548,672, 548,0)
+	local wfgroundp1  = newPolygonFixture(wbodyp1, "groundp1",  196,640, 196,672, 516,672, 516,640)
+	
+	wfleftp1:setFriction(0.00001)
+	wfrightp1:setFriction(0.0001)
+	wfrightp1:setCategory(2)
+	
+	local wbodyp2 = love.physics.newBody(world, 32, -64, "static") --WALLS P2
+	
+	local wfleftp2    = newPolygonFixture(wbodyp2, "leftp2",    484, 0, 484,672, 516,672, 516, 0)
+	local wfrightp2   = newPolygonFixture(wbodyp2, "rightp2",   836,0, 836,672, 868,672, 868,0)
+	local wfgroundp2  = newPolygonFixture(wbodyp2, "groundp2",  516,640, 516,672, 836,672, 836,640)
+	
+	wfrightp2:setFriction(0.00001)
+	wfleftp2:setFriction(0.0001)
+	wfleftp2:setCategory(3)
+	
+	wall = {
+		bodyp1 = wbodyp1,
+		fixturesp1 = {left = wfleftp1, right = wfrightp1, ground = wfgroundp1},
+		bodyp2 = wbodyp2,
+		fixturesp2 = {left = wfleftp2, right = wfrightp2, ground = wfgroundp2},
+	}
+	
 	-----------	
 	world:setCallbacks(collideBmulti)
 	-----------
@@ -141,6 +173,51 @@ function gameBmulti_load()
 	randomtable[1] = math.random(7)
 	starttimer = love.timer.getTime()
 	--first piece! hooray.
+end
+
+local function gameBmulti_debugdraw()
+	if gamestate ~= "gameBmulti" then return end
+	
+	love.graphics.scale(physicsmpscale)
+
+	love.graphics.setColor(1, 0, 0)
+	
+	local wbodyp1 = wall.bodyp1
+	for k, f in pairs(wall.fixturesp1) do
+		local shape = f:getShape()
+		love.graphics.polygon("line", wbodyp1:getWorldPoints(shape:getPoints()))
+	end
+	
+	for i,v in pairs(tetribodiesp1) do
+		local body = v.body
+		local x, y = body:getWorldCenter( )
+		love.graphics.circle("line", x, y, 5)
+		for k, f in pairs(v.fixtures) do
+			local shape = f:getShape()
+			love.graphics.polygon("line", body:getWorldPoints(shape:getPoints()))
+		end
+	end
+	
+	love.graphics.setColor(0, 1, 0)
+	
+	local wbodyp2 = wall.bodyp2
+	for k, f in pairs(wall.fixturesp2) do
+		local shape = f:getShape()
+		love.graphics.polygon("line", wbodyp2:getWorldPoints(shape:getPoints()))
+	end
+	
+	for i,v in pairs(tetribodiesp2) do
+		local body = v.body
+		local x, y = body:getWorldCenter( )
+		love.graphics.circle("line", x, y, 5)
+		for k, f in pairs(v.fixtures) do
+			local shape = f:getShape()
+			love.graphics.polygon("line", body:getWorldPoints(shape:getPoints()))
+		end
+	end
+	
+	love.graphics.scale(1 / physicsmpscale)
+	love.graphics.setColor(1, 1, 1)
 end
 
 function gameBmulti_draw()
@@ -208,14 +285,6 @@ function gameBmulti_draw()
 		
 		love.graphics.draw( v.image, body:getX()*physicsmpscale, body:getY()*physicsmpscale, 
 			body:getAngle(), 1, 1, piececenter[v.kind][1]*mpscale, piececenter[v.kind][2]*mpscale)
-		
-		love.graphics.setColor(1, 0, 0)
-		local x, y = body:getWorldCenter( )
-		love.graphics.circle("line", x, y, 5)
-		for k, f in pairs(v.fixtures) do
-			local shape = f:getShape()
-			love.graphics.polygon("line", body:getWorldPoints(shape:getPoints()))
-		end
 	end
 	----------------	
 	love.graphics.setColor(1, 1, 1)
@@ -335,6 +404,8 @@ function gameBmulti_draw()
 		end
 	end
 	
+	gameBmulti_debugdraw()
+	
 	if fullscreen then
 		love.graphics.translate(-mpfullscreenoffsetX, -mpfullscreenoffsetY)
 		
@@ -451,8 +522,8 @@ function gameBmulti_update(dt)
 		if timepassed > colorizeduration then
 			gamestate = "failedBmulti"
 			
-			wallshapesp1[2]:destroy()
-			wallshapesp2[2]:destroy()
+			wall.fixturesp1.ground:destroy()
+			wall.fixturesp2.ground:destroy()
 			
 			love.audio.stop(gameover2)
 			love.audio.play(gameover2)
@@ -479,21 +550,19 @@ function gameBmulti_update(dt)
 			love.audio.play(musicresults)
 			
 			resultsfloorbody = love.physics.newBody(world, 32, -64, "static")
-			resultsfloorshape = newPolygonFixture( resultsfloorbody,196,448, 196,480, 836,480, 836,448)
-			resultsfloorshape:setUserData("resultsfloor")
+			resultsfloorshape = newPolygonFixture( resultsfloorbody, "resultsfloor",
+				196,448, 196,480, 836,480, 836,448)
 			
 			if winner == 1 then
 				mariobody = love.physics.newBody(world, 388, 320, "dynamic")
-				marioshape = newRectangleFixture( mariobody, 0, 0, 64, 108)
+				marioshape = newRectangleFixture(mariobody, "mario", 0, 0, 64, 108)
 				marioshape:setMask(3)
-				marioshape:setUserData("mario")
 				mariobody:setLinearDamping(0.5)
 				--mariobody:setMassFromShapes()
 			elseif winner == 2 then
 				luigibody = love.physics.newBody(world, 704, 320, "dynamic")
-				luigishape = newRectangleFixture( luigibody, 0, 0, 64, 124)
+				luigishape = newRectangleFixture(luigibody, "luigi", 0, 0, 64, 124)
 				luigishape:setMask(2)
-				luigishape:setUserData("luigi")
 				luigibody:setLinearDamping(0.5)
 				--luigibody:setMassFromShapes()
 			end
@@ -617,7 +686,7 @@ function game_addTetriBmultip2()
 end
 
 function createtetriBmultip1(i, uniqueid, x, y)
-	local image = newPaddedImage( "graphics/pieces/"..i..".png", scale )
+	local image = newPaddedImage( "graphics/pieces/"..i..".png", mpscale )
 	local kind = i
 	
 	local body = newBody(world, x, y, blockrot)
@@ -630,7 +699,7 @@ function createtetriBmultip1(i, uniqueid, x, y)
 end
 
 function createtetriBmultip2(i, uniqueid, x, y)
-	local image = newPaddedImage( "graphics/pieces/"..i..".png", scale )
+	local image = newPaddedImage( "graphics/pieces/"..i..".png", mpscale )
 	local kind = i
 	
 	local body = newBody(world, x, y, blockrot)
