@@ -1,9 +1,9 @@
-local newRectangleShape = function(body, ...)
+local newRectangleFixture = function(body, ...)
 	local shape = love.physics.newRectangleShape(...)
 	return love.physics.newFixture(body, shape, density)
 end
 
-local newPolygonShape = function(body, ...)
+local newPolygonFixture = function(body, ...)
 	local shape = love.physics.newPolygonShape(...)
 	return love.physics.newFixture(body, shape, density)
 end
@@ -12,6 +12,28 @@ local newBody = function(world, x, y, inertia)
 	local body = love.physics.newBody(world, x, y, "dynamic")
 	if inertia then body:setInertia(inertia) end
 	return body
+end
+
+local shapeList = {
+	{-48,0, -16,0, 16,0, 48,0}, --I
+	{-32,-16, 0,-16, 32,-16, 32,16}, --J
+	{-32,-16, 0,-16, 32,-16, -32,16}, --L
+	{-16,-16, -16,16, 16,16, 16,-16}, --O
+	{-32, 16, 0,-16, 0,16, 32,-16}, --S
+	{-32,-16, 0,-16, 32,-16, 0,16}, --T
+	{-32,-16, 0,-16, 0,16, 32, 16}, --Z
+}
+
+local function newTetriFixture(body, kind, udata)
+	local s = shapeList[kind]
+	local fixtures = {}
+	
+	for i = 1, #s / 2 do
+		local fixture = newRectangleFixture(body, s[2 * i - 1], s[2 * i], 32, 32)
+		fixture:setUserData(udata)
+		fixtures[i] = fixture
+	end
+	return fixtures
 end
 
 function gameB_load()
@@ -30,26 +52,24 @@ function gameB_load()
 	meter = 1
 	world = love.physics.newWorld(0, 500, true)
 	
-	tetrikind = {}
-	
-	wallshapes = {}
+	walls = {}
 	
 	tetribodies = {}
-	tetrishapes = {}
 	
-	offsetshapes = {}
+	walls = {}
+	walls.body = love.physics.newBody(world, 32, -64, "static") --WALLS
+	walls.fixture_l = newPolygonFixture(walls.body, 0, -64, 0,672, 32,672, 32,-64)
+	walls.fixture_r = newPolygonFixture(walls.body, 352,-64, 352,672, 384,672, 384,-64)
+	walls.fixture_g = newPolygonFixture(walls.body, 24,640, 24,672, 352,672, 352,640)
+	walls.fixture_c = newPolygonFixture(walls.body, -8,-96, 384,-96, 384,-64, -8,-64)
 	
-	wallbodies = love.physics.newBody(world, 32, -64, "static") --WALLS
-	wallshapes[0] = newPolygonShape(wallbodies, 0, -64, 0,672, 32,672, 32,-64)
-	wallshapes[0]:setUserData("left")
-	wallshapes[0]:setFriction(0.00001)
-	wallshapes[1] = newPolygonShape(wallbodies, 352,-64, 352,672, 384,672, 384,-64)
-	wallshapes[1]:setUserData("right")
-	wallshapes[1]:setFriction(0.00001)
-	wallshapes[2] = newPolygonShape(wallbodies, 24,640, 24,672, 352,672, 352,640)
-	wallshapes[2]:setUserData("ground")
-	wallshapes[3] = newPolygonShape(wallbodies, -8,-96, 384,-96, 384,-64, -8,-64)
-	wallshapes[3]:setUserData("ceiling")
+	walls.fixture_l:setUserData("left")
+	walls.fixture_l:setFriction(0.00001)
+	walls.fixture_r:setUserData("right")
+	walls.fixture_r:setFriction(0.00001)
+	
+	walls.fixture_g:setUserData("ground")
+	walls.fixture_c:setUserData("ceiling")
 	
 	world:setCallbacks(collideB)
 	-----------
@@ -65,71 +85,23 @@ function game_addTetriB()
 	--NEW BLOCK--
 	randomblock = nextpiece
 	createtetriB(randomblock, 1, 224, blockstartY)
-	tetribodies[1]:setLinearVelocity(0, difficulty_speed)
+	tetribodies[1].body:setLinearVelocity(0, difficulty_speed)
 	
 	--RANDOMIZE
 	nextpiece = math.random(7)
 end
 
 function createtetriB(i, uniqueid, x, y)
-
-	tetriimages[uniqueid] = newPaddedImage( "graphics/pieces/"..i..".png", scale )
-	tetrikind[uniqueid] = i
-	tetrishapes[uniqueid] = {}
+	local image = newPaddedImage( "graphics/pieces/"..i..".png", scale )
+	local kind = i
 	
 	local body = newBody(world, x, y, blockrot)
-	tetribodies[uniqueid] = body
+	local fixtures = newTetriFixture(body, i, uniqueid)
 	
-	if i == 1 then --I
-		tetrishapes[uniqueid][1] = newRectangleShape(body, -48,0, 32, 32)
-		tetrishapes[uniqueid][2] = newRectangleShape(body, -16,0, 32, 32)
-		tetrishapes[uniqueid][3] = newRectangleShape(body, 16,0, 32, 32)
-		tetrishapes[uniqueid][4] = newRectangleShape(body, 48,0, 32, 32)
-		
-	elseif i == 2 then --J
-		tetrishapes[uniqueid][1] = newRectangleShape(body, -32,-16, 32, 32)
-		tetrishapes[uniqueid][2] = newRectangleShape(body, 0,-16, 32, 32)
-		tetrishapes[uniqueid][3] = newRectangleShape(body, 32,-16, 32, 32)
-		tetrishapes[uniqueid][4] = newRectangleShape(body, 32,16, 32, 32)
-		
-	elseif i == 3 then --L
-		tetrishapes[uniqueid][1] = newRectangleShape(body, -32,-16, 32, 32)
-		tetrishapes[uniqueid][2] = newRectangleShape(body, 0,-16, 32, 32)
-		tetrishapes[uniqueid][3] = newRectangleShape(body, 32,-16, 32, 32)
-		tetrishapes[uniqueid][4] = newRectangleShape(body, -32,16, 32, 32)
-		
-	elseif i == 4 then --O
-		tetrishapes[uniqueid][1] = newRectangleShape(body, -16,-16, 32, 32)
-		tetrishapes[uniqueid][2] = newRectangleShape(body, -16,16, 32, 32)
-		tetrishapes[uniqueid][3] = newRectangleShape(body, 16,16, 32, 32)
-		tetrishapes[uniqueid][4] = newRectangleShape(body, 16,-16, 32, 32)
-		
-	elseif i == 5 then --S
-		tetrishapes[uniqueid][1] = newRectangleShape(body, -32,16, 32, 32)
-		tetrishapes[uniqueid][2] = newRectangleShape(body, 0,-16, 32, 32)
-		tetrishapes[uniqueid][3] = newRectangleShape(body, 32,-16, 32, 32)
-		tetrishapes[uniqueid][4] = newRectangleShape(body, 0,16, 32, 32)
-		
-	elseif i == 6 then --T
-		tetrishapes[uniqueid][1] = newRectangleShape(body, -32,-16, 32, 32)
-		tetrishapes[uniqueid][2] = newRectangleShape(body, 0,-16, 32, 32)
-		tetrishapes[uniqueid][3] = newRectangleShape(body, 32,-16, 32, 32)
-		tetrishapes[uniqueid][4] = newRectangleShape(body, 0,16, 32, 32)
-		
-	elseif i == 7 then --Z
-		tetrishapes[uniqueid][1] = newRectangleShape(body, 0,16, 32, 32)
-		tetrishapes[uniqueid][2] = newRectangleShape(body, 0,-16, 32, 32)
-		tetrishapes[uniqueid][3] = newRectangleShape(body, 32,16, 32, 32)
-		tetrishapes[uniqueid][4] = newRectangleShape(body, -32,-16, 32, 32)
-		
-	end
+	body:setLinearDamping(0.5)
+	body:setBullet(true)
 	
-	tetribodies[uniqueid]:setLinearDamping(0.5)
-	tetribodies[uniqueid]:setBullet(true)
-	
-	for i, v in pairs(tetrishapes[uniqueid]) do
-		v:setUserData(uniqueid)
-	end
+	tetribodies[uniqueid] = {body = body, kind = kind, fixtures = fixtures, image = image}
 end
 
 function gameB_draw()
@@ -147,7 +119,7 @@ function gameB_draw()
 	--tetrifixtures--
 	for i,v in pairs(tetribodies) do
 		if pause == false then
-			love.graphics.draw( tetriimages[i], v:getX()*physicsscale, v:getY()*physicsscale, v:getAngle(), 1, 1, piececenter[tetrikind[i]][1]*scale, piececenter[tetrikind[i]][2]*scale)
+			love.graphics.draw( v.image, v.body:getX()*physicsscale, v.body:getY()*physicsscale, v.body:getAngle(), 1, 1, piececenter[v.kind][1]*scale, piececenter[v.kind][2]*scale)
 		end
 	end
 	
@@ -196,17 +168,13 @@ function gameB_draw()
 
 	--DEBUG--
 		love.graphics.scale(physicsscale)
-		for i,v in pairs(tetribodies) do
-			x, y = v:getWorldCenter( )
-			love.graphics.points(x, y)
-			for k,l in pairs(tetrishapes[i]) do
-				points = {v:getWorldPoints(l:getPoints())}
-				--for j = 1, #points, 2 do
-				--	points[j] = points[j]
-				--	points[j+1] = points[j+1]
-				--end
-				
-				love.graphics.polygon("line",unpack(points))
+		for i, v in pairs(tetribodies) do
+			local body = v.body
+			local x, y = body:getWorldCenter( )
+			love.graphics.circle("line", x, y, 5)
+			for k, f in pairs(v.fixtures) do
+				local shape = f:getShape()
+				love.graphics.polygon("line", body:getWorldPoints(shape:getPoints()))
 			end
 		end
 		love.graphics.scale(1/physicsscale)
@@ -236,38 +204,36 @@ function gameB_update(dt)
 	end
 
 	if gamestate == "gameB" then
+		local body = tetribodies[1].body
 		if love.keyboard.isDown( "x" ) then
-			if tetribodies[1]:getAngularVelocity() < 3 then
-				tetribodies[1]:applyTorque( 70 * meter)
+			if body:getAngularVelocity() < 3 then
+				body:applyTorque( 70 * meter)
 			end
 		end
 		if love.keyboard.isDown( "y" ) or love.keyboard.isDown( "z" ) or love.keyboard.isDown( "w" ) then
-			if tetribodies[1]:getAngularVelocity() > -3 then
-				tetribodies[1]:applyTorque( -70 * meter)
+			if body:getAngularVelocity() > -3 then
+				body:applyTorque( -70 * meter)
 			end
 		end
 	
 		if love.keyboard.isDown( "left" ) then
-			local x, y = tetribodies[1]:getWorldCenter()
-			tetribodies[1]:applyForce( -70 * meter, 0, x, y )
+			body:applyForce( -70 * meter, 0)
 		end
 		if love.keyboard.isDown( "right" ) then
-			local x, y = tetribodies[1]:getWorldCenter()
-			tetribodies[1]:applyForce( 70 * meter, 0, x, y )
+			body:applyForce( 70 * meter, 0)
 		end
 		
-		local x, y = tetribodies[1]:getLinearVelocity( )
+		local x, y = body:getLinearVelocity( )
 		if love.keyboard.isDown( "down" ) then
 			--commented part limits the blackfallspeed
 			if y > difficulty_speed*5 then
-				tetribodies[1]:setLinearVelocity(x, difficulty_speed*5)
+				body:setLinearVelocity(x, difficulty_speed*5)
 			else
-				local cx, cy = tetribodies[1]:getWorldCenter()
-				tetribodies[1]:applyForce( 0, 20 * meter, cx, cy )
+				body:applyForce( 0, 20 * meter)
 			end
 		else
 			if y > difficulty_speed then
-				tetribodies[1]:setLinearVelocity(x, y-2000*dt)
+				body:setLinearVelocity(x, y-2000*dt)
 			end
 		end
 	end
@@ -277,7 +243,7 @@ function gameB_update(dt)
 	if gamestate == "failingB" then
 		clearcheck = true
 		for i,v in pairs(tetribodies) do
-			if v:getY() < 648 then
+			if v.body:getY() < 648 then
 				clearcheck = false
 			end
 		end
@@ -300,7 +266,7 @@ function collideB(a, b)
 end
 
 function endblockB()
-	if tetribodies[1]:getY() < losingY then
+	if tetribodies[1].body:getY() < losingY then
 		--LOSE--
 		gamestate = "failingB"
 		if musicno < 4 then
@@ -313,17 +279,12 @@ function endblockB()
 		wallshapes[2] = nil
 	else
 		--Transfer block from 1 to end of tetribodies
-		tetrikind[highestbody()+1] = tetrikind[1]
+		local hb = highestbody()
+		local fixtures = tetribodies[1].fixtures
+		tetribodies[hb + 1] = tetribodies[1]
 		
-		tetriimages[highestbody()+1] = tetriimages[1]
-		tetribodies[highestbody()+1] = tetribodies[1]
-		
-		tetrishapes[highestbody()] = {}
-		
-		for i, v in pairs(tetrifixtures[1]) do
-			tetrishapes[highestbody()][i] = tetrishapes[1][i]
-			tetrishapes[highestbody()][i]:setUserData(highestbody())
-			tetrishapes[1][i] = nil
+		for i, v in pairs(fixtures) do
+			fixtures[i]:setUserData(hb + 1)
 		end
 		
 		tetribodies[1] = nil

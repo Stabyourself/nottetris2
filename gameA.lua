@@ -173,7 +173,7 @@ function gameA_draw()
 		local section = math.ceil(cuttingtimer/(lineclearduration/lineclearblinks))
 		if math.mod(section, 2) == 1 or cuttingtimer == 0 then
 		
-			local rr, rg, rb = unpack(getrainbowcolor(hue))
+			local rr, rg, rb = getrainbowcolor(hue)
 			local r = 145 + rr*64
 			local g = 145 + rg*64
 			local b = 145 + rb*64
@@ -724,7 +724,7 @@ function cutimage(bodyid, numberofgroups) --cuts the image of a body based on it
 			ang2 = -ang2 + math.pi
 			
 			if (ang2 > ang and ang2 < ang + math.pi) or ang2 < ang - math.pi or (x < leftlimit or x > rightlimit) then
-				tetriimagedata[bodyid]:setPixel(x, y, 255, 255, 255, 0)
+				tetriimagedata[bodyid]:setPixel(x, y, 1, 1, 1, 0)
 			end]]
 			
 			local dummy1, dummy2 = tetribodies[bodyid]:getWorldPoint((x-width/2+.5)*(4/scale), (y-height/2+.5)*(4/scale))
@@ -738,7 +738,7 @@ function cutimage(bodyid, numberofgroups) --cuts the image of a body based on it
 			end
 			
 			if deletepixel then
-				tetriimagedata[bodyid]:setPixel(x, y, 255, 255, 255, 0)
+				tetriimagedata[bodyid]:setPixel(x, y, 1, 1, 1, 0)
 			end
 		end
 	end

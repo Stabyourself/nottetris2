@@ -1,3 +1,14 @@
+function graphics_setMode(width, height, fullscreen, vsync, fsaa)
+	if vsync == nil or vsync then vsync = 1 else vsync = 0 end
+	if fsaa == nil then fsaa = 0 end
+	if fullscreen == nil then fullscreen = false end
+	return love.window.setMode(width, height, {
+		fullscreen = fullscreen,
+		msaa = fsaa,
+		vsync = vsync,
+	})
+end
+
 function love.load()
 	love.graphics.setDefaultFilter('nearest', 'nearest')
 
@@ -26,10 +37,10 @@ function love.load()
 	
 	if fullscreen == false then
 		if scale ~= 5 then
-			love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+			graphics_setMode( 160*scale, 144*scale, false, vsync, 0 )
 		end
 	else
-		love.graphics.setMode( 0, 0, true, vsync, 0 )
+		graphics_setMode( 0, 0, true, vsync, 0 )
 		love.mouse.setVisible( false )
 		desktopwidth, desktopheight = love.graphics.getWidth(), love.graphics.getHeight()
 		saveoptions()
@@ -135,7 +146,7 @@ function love.load()
 	math.randomseed( os.time() )
 	math.random();math.random();math.random() --discarding some as they seem to tend to unrandomness.
 	
-	love.graphics.setBackgroundColor( 255, 255, 255 )
+	love.graphics.setBackgroundColor( 1, 1, 1 )
 
 	p1wins = 0
 	p2wins = 0
@@ -331,34 +342,28 @@ end
 function newImageData(path, s)
 	local imagedata = love.image.newImageData( path )
 	
-	if s then
-		imagedata = scaleImagedata(imagedata, s)
-	end
+	local rr, rg, rb = getrainbowcolor(hue)
 	
-	local width, height = imagedata:getWidth(), imagedata:getHeight()
-	
-	local rr, rg, rb = unpack(getrainbowcolor(hue))
-	
-	for y = 0, height-1 do
-		for x = 0, width-1 do
-			local oldr, oldg, oldb, olda = imagedata:getPixel(x, y)
-			
-			if olda ~= 0 then
-				if oldr > 203 and oldr < 213 then --lightgrey
-					local r = 145 + rr*64
-					local g = 145 + rg*64
-					local b = 145 + rb*64
-					imagedata:setPixel(x, y, r, g, b, olda)
-				elseif oldr > 107 and oldr < 117 then --darkgrey
-					local r = 73 + rr*43
-					local g = 73 + rg*43
-					local b = 73 + rb*43
-					imagedata:setPixel(x, y, r, g, b, olda)
-				end
+	local pixelfn = function(x, y, r, g, b, a)
+		local br = love.math.colorToBytes(r, g, b)
+		
+		if a ~= 0 then
+			if br > 203 and br < 213 then --lightgrey
+				local r, g, b = love.math.colorFromBytes(145 + rr*64, 145 + rg*64, 145 + rb*64)
+				return r, g, b, a
+			elseif br > 107 and br < 117 then --darkgrey
+				local r, g, b = love.math.colorFromBytes(73 + rr*43, 73 + rg*43, 73 + rb*43)
+				return r, g, b, a
 			end
 		end
+		return r, g, b, a
 	end
 	
+	imagedata:mapPixel(pixelfn)
+	
+	if s then
+		return scaleImagedata(imagedata, s)
+	end
 	return imagedata
 end
 
@@ -424,13 +429,8 @@ function scaleImagedata(imagedata, i)
 	local width, height = imagedata:getWidth(), imagedata:getHeight()
 	local scaled = love.image.newImageData(width*i, height*i)
 	
-	for y = 0, height*i-1 do
-		for x = 0, width*i-1 do
-			local r, g, b, a = imagedata:getPixel(math.floor(x/i), math.floor(y/i))
-			scaled:setPixel(x, y, r, g, b, a)
-		end
-	end	
-	
+	scaled:mapPixel(function(x, y, r, g, b, a) return imagedata:getPixel(math.floor(x/i), math.floor(y/i)) end)
+
 	return scaled
 end
 
@@ -566,9 +566,9 @@ function togglefullscreen(fullscr)
 	if fullscr == false then
 		scale = suggestedscale
 		physicsscale = scale/4
-		love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+		graphics_setMode( 160*scale, 144*scale, false, vsync, 0 )
 	else
-		love.graphics.setMode( 0, 0, true, vsync, 16 )
+		graphics_setMode( 0, 0, true, vsync, 16 )
 		desktopwidth, desktopheight = love.graphics.getWidth(), love.graphics.getHeight()
 		suggestedscale = math.min(math.floor((desktopheight-50)/144), math.floor((desktopwidth-10)/160))
 		suggestedscale = math.min(math.floor((desktopheight-50)/144), math.floor((desktopwidth-10)/160))
@@ -642,7 +642,7 @@ function savehighscores()
 end
 
 function changescale(i)
-	love.graphics.setMode( 160*i, 144*i, false, vsync, 0 )
+	graphics_setMode( 160*i, 144*i, false, vsync, 0 )
 	nextpieceimg = {}
 	for j = 1, 7 do
 		nextpieceimg[j] = newPaddedImage( "graphics/pieces/"..j..".png", i )
@@ -717,34 +717,13 @@ function getPoints2table(fixture)
 end
 
 function getrainbowcolor(i)
-	local r, g, b
-	if i < 1/6 then
-		r = 1
-		g = i*6
-		b = 0
-	elseif i >= 1/6 and i < 2/6 then
-		r = (1/6-(i-1/6))*6
-		g = 1
-		b = 0
-	elseif i >= 2/6 and i < 3/6 then
-		r = 0
-		g = 1
-		b = (i-2/6)*6
-	elseif i >= 3/6 and i < 4/6 then
-		r = 0
-		g = (1/6-(i-3/6))*6
-		b = 1
-	elseif i >= 4/6 and i < 5/6 then
-		r = (i-4/6)*6
-		g = 0
-		b = 1
-	else
-		r = 1
-		g = 0
-		b = (1/6-(i-5/6))*6
-	end
-	
-	return {r, g, b}
+	i = i * 6
+	if i < 1 then return 1, i, 0 end
+	if i < 2 then return 2 - i, 1, 0 end
+	if i < 3 then return 0, 1, i - 2 end
+	if i < 4 then return 0, 4 - i, 1 end
+	if i < 5 then return i - 4, 0, 1 end
+	return 1, 0, 6 - i
 end
 
 function love.keypressed( key, unicode )
@@ -1079,7 +1058,7 @@ function love.keypressed( key, unicode )
 	elseif gamestate == "gameBmulti" and gamestarted == false then
 		if controls.check("escape", key) then
 			if not fullscreen then
-				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+				graphics_setMode( 160*scale, 144*scale, false, vsync, 0 )
 			end
 			gamestate = "multimenu"
 			if musicno < 4 then
@@ -1089,7 +1068,7 @@ function love.keypressed( key, unicode )
 	elseif gamestate == "gameBmulti" and gamestarted == true then
 		if controls.check("escape", key) then
 			if not fullscreen then
-				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+				graphics_setMode( 160*scale, 144*scale, false, vsync, 0 )
 			end
 			gamestate = "multimenu"
 		end
@@ -1108,7 +1087,7 @@ function love.keypressed( key, unicode )
 				love.audio.play(music[musicno])
 			end
 			if not fullscreen then
-				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+				graphics_setMode( 160*scale, 144*scale, false, vsync, 0 )
 			end
 			gamestate = "multimenu"
 		end
