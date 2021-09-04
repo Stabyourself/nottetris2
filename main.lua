@@ -1,4 +1,9 @@
 function love.load()
+	-- add debug stuff for zbstudio
+	if arg[#arg] == "-debug" then require("mobdebug").start() end
+	-- set nearest neighbor filter before loading anything
+	love.graphics.setDefaultFilter('nearest', 'nearest')
+
 	--requires--
 	require "controls"
 	require "gameB"
@@ -93,7 +98,7 @@ function love.load()
 	musicoptions:setVolume( 1 )
 	musicoptions:setLooping( true )
 	
-	boot = love.audio.newSource( "sounds/boot.ogg")
+	boot = love.audio.newSource( "sounds/boot.ogg", "stream")
 	blockfall = love.audio.newSource( "sounds/blockfall.ogg", "stream")
 	blockturn = love.audio.newSource( "sounds/turn.ogg", "stream")
 	blockmove = love.audio.newSource( "sounds/move.ogg", "stream")
@@ -109,7 +114,7 @@ function love.load()
 	changevolume(volume)
 	
 	--IMAGES THAT WON'T CHANGE HUE:
-	rainbowgradient = love.graphics.newImage("graphics/rainbow.png")rainbowgradient:setFilter("nearest", "nearest")
+	rainbowgradient = love.graphics.newImage("graphics/rainbow.png")
 	
 	--Whitelist for highscorenames--
 	whitelist = {}
@@ -242,7 +247,7 @@ function loadimages()
 	luigicry2 = newPaddedImage("graphics/versus/luigicry2.png")
 	
 	--rockets--
-	rocket1 = newPaddedImage("graphics/rocket1.png");rocket1:setFilter( "nearest", "nearest" )
+	rocket1 = newPaddedImage("graphics/rocket1.png")
 	rocket2 = newPaddedImage("graphics/rocket2.png")
 	rocket3 = newPaddedImage("graphics/rocket3.png")
 	spaceshuttle = newPaddedImage("graphics/spaceshuttle.png")
@@ -274,49 +279,6 @@ function loadimages()
 	tetrisfont = newPaddedImageFont("graphics/font.png", "0123456789abcdefghijklmnopqrstTuvwxyz.,'C-#_>:<! ")
 	whitefont = newPaddedImageFont("graphics/fontwhite.png", "0123456789abcdefghijklmnopqrstTuvwxyz.,'C-#_>:<!+ ")
 	love.graphics.setFont(tetrisfont)
-	
-	--filters!
-	stabyourselflogo:setFilter("nearest", "nearest")
-	logo:setFilter( "nearest", "nearest" )
-	title:setFilter( "nearest", "nearest" )
-	gametype:setFilter( "nearest", "nearest" )
-	mpmenu:setFilter( "nearest", "nearest" )
-	optionsmenu:setFilter( "nearest", "nearest" )
-	volumeslider:setFilter( "nearest", "nearest" )
-	gamebackground:setFilter( "nearest", "nearest" )
-	gamebackgroundcutoff:setFilter( "nearest", "nearest" )
-	gamebackgroundmulti:setFilter( "nearest", "nearest" )
-	multiresults:setFilter( "nearest", "nearest" )
-	number1:setFilter( "nearest", "nearest" )
-	number2:setFilter( "nearest", "nearest" )
-	number3:setFilter( "nearest", "nearest" )
-	gameover:setFilter( "nearest", "nearest" )
-	gameovercutoff:setFilter( "nearest", "nearest" )
-	pausegraphic:setFilter( "nearest", "nearest" )
-	pausegraphiccutoff:setFilter( "nearest", "nearest" )
-	marioidle:setFilter( "nearest", "nearest" )
-	mariojump:setFilter( "nearest", "nearest" )
-	mariocry1:setFilter( "nearest", "nearest" )
-	mariocry2:setFilter( "nearest", "nearest" )
-	luigiidle:setFilter( "nearest", "nearest" )
-	luigijump:setFilter( "nearest", "nearest" )
-	luigicry1:setFilter( "nearest", "nearest" )
-	luigicry2:setFilter( "nearest", "nearest" )
-	rocket2:setFilter( "nearest", "nearest" )
-	rocket3:setFilter( "nearest", "nearest" )
-	spaceshuttle:setFilter( "nearest", "nearest" )
-	rocketbackground:setFilter( "nearest", "nearest" )
-	bigrocketbackground:setFilter( "nearest", "nearest" )
-	bigrockettakeoffbackground:setFilter( "nearest", "nearest" )
-	smoke1left:setFilter( "nearest", "nearest" )
-	smoke1right:setFilter( "nearest", "nearest" )
-	smoke2left:setFilter( "nearest", "nearest" )
-	smoke2right:setFilter( "nearest", "nearest" )
-	fire1:setFilter( "nearest", "nearest" )
-	fire2:setFilter( "nearest", "nearest" )
-	firebig1:setFilter( "nearest", "nearest" )
-	firebig2:setFilter( "nearest", "nearest" )
-	congratsline:setFilter( "nearest", "nearest" )
 end
 
 function love.update(dt)
@@ -455,9 +417,8 @@ function newPaddedImageFont(filename, glyphs)
     if wp ~= w or hp ~= h then
         local padded = love.image.newImageData(wp, hp)
         padded:paste(source, 0, 0)
-		local image = love.graphics.newImage(padded)
-		image:setFilter("nearest", "nearest")
-        return love.graphics.newImageFont(image, glyphs)
+				local extraspacing = 1
+        return love.graphics.newImageFont(padded, glyphs, extraspacing)
     end
 	
     return love.graphics.newImageFont(source, glyphs)
@@ -529,7 +490,7 @@ function loadconfig()
 end
 
 function loadoptions()
-	if love.filesystem.exists("options.txt") then
+	if love.filesystem.getInfo("options.txt") then
 		local s = love.filesystem.read("options.txt")
 		local split1 = s:split("\n")
 		for i = 1, #split1 do
@@ -599,7 +560,7 @@ function saveoptions()
 end
 
 function autosize()
-	local modes = love.graphics.getModes()
+	local modes = love.window.getFullscreenModes()
 	desktopwidth, desktopheight = modes[1]["width"], modes[1]["height"]
 end
 
@@ -635,7 +596,7 @@ function loadhighscores()
 		fileloc = "highscoresB.txt"
 	end
 	
-	if love.filesystem.exists( fileloc ) then
+	if love.filesystem.getInfo( fileloc ) then
 		
 		highdata = love.filesystem.read( fileloc )
 		highdata = highdata:split(";")
@@ -997,8 +958,8 @@ function love.keypressed( key, unicode )
 				changevolume(volume)
 			elseif optionsselection == 2 then
 				hue = 0.08
-				optionsmenu = newPaddedImage("graphics/options.png");optionsmenu:setFilter( "nearest", "nearest" )
-				volumeslider = newPaddedImage("graphics/volumeslider.png");volumeslider:setFilter( "nearest", "nearest" )
+				optionsmenu = newPaddedImage("graphics/options.png")
+				volumeslider = newPaddedImage("graphics/volumeslider.png")
 			elseif optionsselection == 3 then
 				if fullscreen == false then
 					if scale ~= suggestedscale then
