@@ -1,3 +1,6 @@
+-- menu.lua (Ported to LÖVE 11.5)
+-- Handles the menu system: loading, drawing, and updating the game’s various menus.
+
 function menu_load()
 	gamestate = "logo"
 	creditstext = {
@@ -24,7 +27,7 @@ function menu_load()
 end
 
 function menu_draw()
-	--FULLSCREEN OFFSET
+	-- Apply fullscreen offset if needed.
 	if fullscreen then
 		love.graphics.translate(fullscreenoffsetX, fullscreenoffsetY)
 	end
@@ -36,14 +39,14 @@ function menu_draw()
 			love.graphics.draw(stabyourselflogo, 7*scale, math.floor(58*scale), 0, scale, scale)
 		end
 
-	elseif gamestate == "credits" then------------		
+	elseif gamestate == "credits" then
 		for i, v in pairs(creditstext) do
 			love.graphics.print( v, 0, i*8*scale, 0, scale)
 		end
 		love.graphics.draw(logo, 32*scale, 80*scale, 0, scale)
 	------------------------------------------
 	
-	elseif gamestate == "title" then----------
+	elseif gamestate == "title" then
 		love.graphics.draw(title, 0, 0, 0, scale)
 	if playerselection == 1 then
 		love.graphics.print(">", 1*scale, 124*scale, 0, scale)
@@ -127,7 +130,7 @@ function menu_draw()
 			end
 		end
 		
-		--win counter
+		-- win counter
 		if p1wins < 10 then
 			love.graphics.print( "0"..p1wins, 15*scale, 31*scale, 0, scale)
 		else
@@ -144,22 +147,23 @@ function menu_draw()
 	if gamestate == "menu" or gamestate == "highscoreentry" then
 		for i = 1, 3 do
 			if tonumber(highscore[i]) > 0 then
-				--name
+				-- Draw the highscore name (up to 6 characters)
 				love.graphics.print(string.lower(string.sub(highscorename[i], 1, 6)), 33*scale, 110*scale+8*scale*(i-1), 0, scale)
-				--score
+				-- Calculate offset for score printing.
 				offsetX = 0
-				for i = 1, string.sub(tostring(highscore[i]), 1, 6):len() - 1 do
+				local scoreStr = tostring(highscore[i]):sub(1, 6)
+				for i = 1, #scoreStr - 1 do
 					offsetX = offsetX - 8*scale
 				end
-				love.graphics.print(string.sub(tostring(highscore[i]), 1, 6), 137*scale+offsetX, 110*scale+8*scale*(i-1), 0, scale)
+				love.graphics.print(scoreStr, 137*scale+offsetX, 110*scale+8*scale*(i-1), 0, scale)
 			end
 		end
 	end
 	
 	if gamestate == "highscoreentry" then
-		if highscorename[highscoreno]:len() < 6 then
+		if #highscorename[highscoreno] < 6 then
 			offsetX = 0
-			for i = 1, highscorename[highscoreno]:len() do
+			for i = 1, #highscorename[highscoreno] do
 				offsetX = offsetX + 8*scale
 			end
 			if cursorblink == true then
@@ -178,25 +182,25 @@ function menu_draw()
 		love.graphics.draw(optionsmenu, 0, 0, 0, scale, scale)
 		love.graphics.draw(rainbowgradient, 73*scale, 33*scale, 0, scale, scale)
 		
-		--volume slider
+		-- volume slider
 		love.graphics.draw(volumeslider, 71*scale+round(76*volume)*scale, 15*scale, 0, scale, scale)
 		
-		--hue slider
+		-- hue slider
 		love.graphics.draw(volumeslider, 71*scale+round(76*hue*scale), 31*scale, 0, scale, scale)
 		
-		--blend out unavailable scales
+		-- blend out unavailable scales
 		for i = 2, 7 do
 			if i > maxscale then
 				love.graphics.print(" ", 75*scale+(i-1)*11*scale, 50*scale, 0, scale)
 			end
 		end
 		
-		--current scale
+		-- current scale
 		if fullscreen == false then
 			love.graphics.print(scale, 75*scale+(scale-1)*11*scale, 50*scale, 0, scale)
 		end
 		
-		--fullscreen
+		-- fullscreen
 		if fullscreen then
 			love.graphics.print("yes", 96*scale, 66*scale, 0, scale)
 		else
@@ -206,6 +210,12 @@ function menu_draw()
 		
 		if selectblink then
 			love.graphics.print(optionschoices[optionsselection], 19*scale, 18*scale+(optionsselection-1)*16*scale, 0, scale)
+		end
+
+		-- Reset fullscreen offset and scissor.
+		if fullscreen then
+			love.graphics.translate(-fullscreenoffsetX, -fullscreenoffsetY)
+			love.graphics.setScissor()
 		end
 		
 	end

@@ -1,5 +1,60 @@
+-- main.lua (Ported to LÖVE 11.5)
+--
+
+do -- This is temporary code added to ensure any attempts to access getUserData() directly fail with a clean error message how to fix the code.
+   -- once the port is complete, be sure to remove this fixture proxy.
+  local function isFixture(obj)
+    return type(obj) == "userdata" and obj.getUserData and type(obj.getUserData) == "function"
+  end
+
+  function wrapFixture(fixture)
+    if not isFixture(fixture) then
+      return fixture
+    end
+    local proxy = { _raw = fixture }
+    setmetatable(proxy, {
+      __index = function(tbl, key)
+        if type(key) == "number" then
+          error("Direct indexing of a physics fixture is not allowed; use getUserData() instead", 2)
+        end
+        -- Forward method calls: Look up the key in the raw fixture.
+        local value = fixture[key]
+        if type(value) == "function" then
+          -- Return a function that calls the raw function with the raw fixture as its self.
+          return function(_, ...)
+            return value(fixture, ...)
+          end
+        else
+          return value
+        end
+      end,
+      __newindex = function(tbl, key, value)
+        error("Attempt to write to a wrapped physics fixture", 2)
+      -- end,
+      -- -- This does not seem to work in catching comparison to a string.
+      -- __toString = function()
+      --   error("Attempt to convert fixture to a string", 2)
+      end
+    })
+    return proxy
+  end
+  local realNewFixture = love.physics.newFixture
+
+  function wrapCollisionFunction(myCollisionCallback)
+    return function(a, b, contact)
+      -- Only wrap a and b (fixtures), not contact objects.
+      return myCollisionCallback(wrapFixture(a), wrapFixture(b), contact)
+    end
+  end
+
+  function love.physics.newFixture(body, shape, density, ...)
+    local fixture = realNewFixture(body, shape, density, ...)
+    return wrapFixture(fixture)
+  end
+end
+
 function love.load()
-	--requires--
+	-- requires --
 	require "controls"
 	require "gameB"
 	require "gameBmulti"
@@ -24,10 +79,10 @@ function love.load()
 	
 	if fullscreen == false then
 		if scale ~= 5 then
-			love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+			love.window.setMode( 160*scale, 144*scale, {fullscreen = false, vsync = vsync, msaa = 0})
 		end
 	else
-		love.graphics.setMode( 0, 0, true, vsync, 0 )
+		love.window.setMode( 0, 0, {fullscreen = true, vsync = vsync, msaa = 0})
 		love.mouse.setVisible( false )
 		desktopwidth, desktopheight = love.graphics.getWidth(), love.graphics.getHeight()
 		saveoptions()
@@ -46,11 +101,11 @@ function love.load()
 	
 	physicsscale = scale/4
 	
-	--pieces--
+	-- pieces --
 	tetriimages = {}
 	tetriimagedata = {}
 	
-	--SOUND--
+	-- SOUND --
 	music = {}
 	
 	music[1] = love.audio.newSource( "sounds/themeA.ogg", "stream")
@@ -93,7 +148,7 @@ function love.load()
 	musicoptions:setVolume( 1 )
 	musicoptions:setLooping( true )
 	
-	boot = love.audio.newSource( "sounds/boot.ogg")
+	boot = love.audio.newSource( "sounds/boot.ogg", "static")
 	blockfall = love.audio.newSource( "sounds/blockfall.ogg", "stream")
 	blockturn = love.audio.newSource( "sounds/turn.ogg", "stream")
 	blockmove = love.audio.newSource( "sounds/move.ogg", "stream")
@@ -108,10 +163,11 @@ function love.load()
 	
 	changevolume(volume)
 	
-	--IMAGES THAT WON'T CHANGE HUE:
-	rainbowgradient = love.graphics.newImage("graphics/rainbow.png")rainbowgradient:setFilter("nearest", "nearest")
+	-- IMAGES THAT WON'T CHANGE HUE:
+	rainbowgradient = love.graphics.newImage("graphics/rainbow.png")
+	rainbowgradient:setFilter("nearest", "nearest")
 	
-	--Whitelist for highscorenames--
+	-- Whitelist for highscorenames --
 	whitelist = {}
 	for i = 48, 57 do -- 0 - 9
 		whitelist[i] = true
@@ -119,7 +175,7 @@ function love.load()
 	for i = 65, 90 do -- A - Z
 		whitelist[i] = true
 	end
-	for i = 97, 122 do --a - z
+	for i = 97, 122 do -- a - z
 		whitelist[i] = true
 	end
 	whitelist[32] = true -- space
@@ -131,9 +187,9 @@ function love.load()
 	-----------------------------
 	
 	math.randomseed( os.time() )
-	math.random();math.random();math.random() --discarding some as they seem to tend to unrandomness.
+	math.random();math.random();math.random() -- discarding some as they seem to tend to unrandomness.
 	
-	love.graphics.setBackgroundColor( 255, 255, 255 )
+	love.graphics.setBackgroundColor( 1, 1, 1 )
 
 	p1wins = 0
 	p2wins = 0
@@ -149,23 +205,23 @@ function love.load()
 	selectblink = true
 	cursorblink = true
 	playerselection = 1
-	musicno = 1 --
-	gameno = 1 --
-	selection = 1 --
-	colorizeduration = 3 --seconds
-	lineclearduration = 1.2 --seconds
-	lineclearblinks = 7 --i
-	linecleartreshold = 8.1 --in blocks
-	densityupdateinterval = 1/30 --in seconds
-	nextpiecerotspeed = 1 --rad per seconnd
-	minfps = 1/50 --dt doesn't go higher than this
+	musicno = 1
+	gameno = 1
+	selection = 1
+	colorizeduration = 3 -- seconds
+	lineclearduration = 1.2 -- seconds
+	lineclearblinks = 7 -- i
+	linecleartreshold = 8.1 -- in blocks
+	densityupdateinterval = 1/30 -- in seconds
+	nextpiecerotspeed = 1 -- rad per seconnd
+	minfps = 1/50 -- dt doesn't go higher than this
 	scoreaddtime = 0.5
 	startdelaytime = 0
 	density = 0.1
 	
-	blockstartY = -64 --where new blocks are created
-	losingY = 0 --lose if block 1 collides above this line
-	blockmass = 5 --probably obsolete because body:setMassFromShapes()
+	blockstartY = -64 -- where new blocks are created
+	losingY = 0 -- lose if block 1 collides above this line
+	blockmass = 5 -- probably obsolete because body:setMassFromShapes()
 	blockrot = 10
 	blockrestitution = 0.1
 	minmass = 1
@@ -195,7 +251,7 @@ function love.load()
 	
 	loadimages()
 	
-	--all done!
+	-- all done!
 	if startdelay == 0 then
 		menu_load()
 	end
@@ -206,8 +262,8 @@ function start()
 end
 
 function loadimages()
-	--IMAGES--
-	--menu--
+	-- IMAGES --
+	-- menu --
 	stabyourselflogo = newPaddedImage("graphics/stabyourselflogo.png")
 	logo = newPaddedImage("graphics/logo.png")
 	title = newPaddedImage("graphics/title.png")
@@ -215,7 +271,7 @@ function loadimages()
 	mpmenu = newPaddedImage("graphics/mpmenu.png")
 	optionsmenu = newPaddedImage("graphics/options.png")
 	volumeslider = newPaddedImage("graphics/volumeslider.png")
-	--game--
+	-- game --
 	gamebackground = newPaddedImage("graphics/gamebackground.png")
 	gamebackgroundcutoff = newPaddedImage("graphics/gamebackgroundgamea.png")
 	gamebackgroundmulti = newPaddedImage("graphics/gamebackgroundmulti.png")
@@ -230,7 +286,7 @@ function loadimages()
 	pausegraphic = newPaddedImage("graphics/pause.png")
 	pausegraphiccutoff = newPaddedImage("graphics/pausecutoff.png")
 	
-	--figures--
+	-- figures --
 	marioidle = newPaddedImage("graphics/versus/marioidle.png")
 	mariojump = newPaddedImage("graphics/versus/mariojump.png")
 	mariocry1 = newPaddedImage("graphics/versus/mariocry1.png")
@@ -241,7 +297,7 @@ function loadimages()
 	luigicry1 = newPaddedImage("graphics/versus/luigicry1.png")
 	luigicry2 = newPaddedImage("graphics/versus/luigicry2.png")
 	
-	--rockets--
+	-- rockets --
 	rocket1 = newPaddedImage("graphics/rocket1.png");rocket1:setFilter( "nearest", "nearest" )
 	rocket2 = newPaddedImage("graphics/rocket2.png")
 	rocket3 = newPaddedImage("graphics/rocket3.png")
@@ -264,18 +320,18 @@ function loadimages()
 	
 	congratsline = newPaddedImage("graphics/congratsline.png")
 	
-	--nextpiece
+	-- nextpiece
 	nextpieceimg = {}
 	for i = 1, 7 do
 		nextpieceimg[i] = newPaddedImage( "graphics/pieces/"..i..".png", scale )
 	end
 	
-	--font--
+	-- font --
 	tetrisfont = newPaddedImageFont("graphics/font.png", "0123456789abcdefghijklmnopqrstTuvwxyz.,'C-#_>:<! ")
 	whitefont = newPaddedImageFont("graphics/fontwhite.png", "0123456789abcdefghijklmnopqrstTuvwxyz.,'C-#_>:<!+ ")
 	love.graphics.setFont(tetrisfont)
 	
-	--filters!
+	-- filters!
 	stabyourselflogo:setFilter("nearest", "nearest")
 	logo:setFilter( "nearest", "nearest" )
 	title:setFilter( "nearest", "nearest" )
@@ -385,15 +441,15 @@ function newImageData(path, s)
 			local oldr, oldg, oldb, olda = imagedata:getPixel(x, y)
 			
 			if olda ~= 0 then
-				if oldr > 203 and oldr < 213 then --lightgrey
-					local r = 145 + rr*64
-					local g = 145 + rg*64
-					local b = 145 + rb*64
+				if oldr > (203/255) and oldr < (213/255) then -- lightgrey
+					local r = (145 + rr*64)/255
+					local g = (145 + rg*64)/255
+					local b = (145 + rb*64)/255
 					imagedata:setPixel(x, y, r, g, b, olda)
-				elseif oldr > 107 and oldr < 117 then --darkgrey
-					local r = 73 + rr*43
-					local g = 73 + rg*43
-					local b = 73 + rb*43
+				elseif oldr > (107/255) and oldr < (117/255) then -- darkgrey
+					local r = (73 + rr*43)/255
+					local g = (73 + rg*43)/255
+					local b = (73 + rb*43)/255
 					imagedata:setPixel(x, y, r, g, b, olda)
 				end
 			end
@@ -413,8 +469,8 @@ function newPaddedImage(filename, s)
     local w, h = source:getWidth(), source:getHeight()
    
     -- Find closest power-of-two.
-    local wp = math.pow(2, math.ceil(math.log(w)/math.log(2)))
-    local hp = math.pow(2, math.ceil(math.log(h)/math.log(2)))
+    local wp = (2 ^ math.ceil(math.log(w)/math.log(2)))
+    local hp = (2 ^ math.ceil(math.log(h)/math.log(2)))
    
     -- Only pad if needed:
     if wp ~= w or hp ~= h then
@@ -426,12 +482,12 @@ function newPaddedImage(filename, s)
     return love.graphics.newImage(source)
 end
 
-function padImagedata(source) --returns image, not imagedata!
+function padImagedata(source) -- returns image, not imagedata!
     local w, h = source:getWidth(), source:getHeight()
    
     -- Find closest power-of-two.
-    local wp = math.pow(2, math.ceil(math.log(w)/math.log(2)))
-    local hp = math.pow(2, math.ceil(math.log(h)/math.log(2)))
+    local wp = (2 ^ math.ceil(math.log(w)/math.log(2)))
+    local hp = (2 ^ math.ceil(math.log(h)/math.log(2)))
    
     -- Only pad if needed:
     if wp ~= w or hp ~= h then
@@ -448,19 +504,19 @@ function newPaddedImageFont(filename, glyphs)
     local w, h = source:getWidth(), source:getHeight()
    
     -- Find closest power-of-two.
-    local wp = math.pow(2, math.ceil(math.log(w)/math.log(2)))
-    local hp = math.pow(2, math.ceil(math.log(h)/math.log(2)))
+    local wp = (2 ^ math.ceil(math.log(w)/math.log(2)))
+    local hp = (2 ^ math.ceil(math.log(h)/math.log(2)))
    
     -- Only pad if needed:
     if wp ~= w or hp ~= h then
         local padded = love.image.newImageData(wp, hp)
         padded:paste(source, 0, 0)
-		local image = love.graphics.newImage(padded)
-		image:setFilter("nearest", "nearest")
-        return love.graphics.newImageFont(image, glyphs)
+        -- In LÖVE 11.5, newImageFont expects an ImageData so pass padded directly:
+        -- Pass 1 as the spacing parameter.
+		return love.graphics.newImageFont(padded, glyphs, 1)
     end
 	
-    return love.graphics.newImageFont(source, glyphs)
+    return love.graphics.newImageFont(source, glyphs, 1)
 end
 
 function scaleImagedata(imagedata, i)
@@ -529,14 +585,14 @@ function loadconfig()
 end
 
 function loadoptions()
-	if love.filesystem.exists("options.txt") then
+	if love.filesystem.getInfo("options.txt") then
 		local s = love.filesystem.read("options.txt")
 		local split1 = s:split("\n")
 		for i = 1, #split1 do
 			local split2 = split1[i]:split("=")
 			if split2[1] == "volume" then
 				local v = tonumber(split2[2])
-				--clamp and round
+				-- clamp and round
 				if v < 0 then
 					v = 0
 				elseif v > 1 then
@@ -599,19 +655,19 @@ function saveoptions()
 end
 
 function autosize()
-	local modes = love.graphics.getModes()
-	desktopwidth, desktopheight = modes[1]["width"], modes[1]["height"]
+	desktopwidth, desktopheight = love.window.getDesktopDimensions()
 end
 
 function togglefullscreen(fullscr)
 	fullscreen = fullscr
 	love.mouse.setVisible( not fullscreen )
+	local xDiscard, yDiscard, currentDisplay = love.window.getPosition()
 	if fullscr == false then
 		scale = suggestedscale
 		physicsscale = scale/4
-		love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+		love.window.setMode( 160*scale, 144*scale, {fullscreen = false, vsync = vsync, msaa = 0, display = currentDisplay})
 	else
-		love.graphics.setMode( 0, 0, true, vsync, 16 )
+		love.window.setMode( 0, 0, {fullscreen = true, vsync = vsync, msaa = 16, display = currentDisplay})
 		desktopwidth, desktopheight = love.graphics.getWidth(), love.graphics.getHeight()
 		suggestedscale = math.min(math.floor((desktopheight-50)/144), math.floor((desktopwidth-10)/160))
 		suggestedscale = math.min(math.floor((desktopheight-50)/144), math.floor((desktopwidth-10)/160))
@@ -635,7 +691,7 @@ function loadhighscores()
 		fileloc = "highscoresB.txt"
 	end
 	
-	if love.filesystem.exists( fileloc ) then
+	if love.filesystem.getInfo( fileloc ) then
 		
 		highdata = love.filesystem.read( fileloc )
 		highdata = highdata:split(";")
@@ -685,7 +741,8 @@ function savehighscores()
 end
 
 function changescale(i)
-	love.graphics.setMode( 160*i, 144*i, false, vsync, 0 )
+	local xDiscard, yDiscard, currentDisplay = love.window.getPosition()
+	love.window.setMode(160*i, 144*i, {fullscreen = false, vsync = vsync, msaa = 0, display = currentDisplay})
 	nextpieceimg = {}
 	for j = 1, 7 do
 		nextpieceimg[j] = newPaddedImage( "graphics/pieces/"..j..".png", i )
@@ -789,6 +846,7 @@ function getrainbowcolor(i)
 end
 
 function love.keypressed( key, unicode )
+	local xDiscard, yDiscard, currentDisplay = love.window.getPosition()
 	if gamestate == nil then
 		if controls.check("return", key) then
 			gamestate = "title"
@@ -836,7 +894,7 @@ function love.keypressed( key, unicode )
 				optionsselection = 1
 			end
 		elseif controls.check("escape", key) then
-			love.event.push("q")
+			love.event.quit()
 		elseif controls.check("left", key) and playerselection > 1 then
 			playerselection = playerselection - 1
 		elseif controls.check("right", key) and playerselection < 3 then
@@ -997,8 +1055,10 @@ function love.keypressed( key, unicode )
 				changevolume(volume)
 			elseif optionsselection == 2 then
 				hue = 0.08
-				optionsmenu = newPaddedImage("graphics/options.png");optionsmenu:setFilter( "nearest", "nearest" )
-				volumeslider = newPaddedImage("graphics/volumeslider.png");volumeslider:setFilter( "nearest", "nearest" )
+				optionsmenu = newPaddedImage("graphics/options.png")
+				optionsmenu:setFilter( "nearest", "nearest" )
+				volumeslider = newPaddedImage("graphics/volumeslider.png")
+				volumeslider:setFilter( "nearest", "nearest" )
 			elseif optionsselection == 3 then
 				if fullscreen == false then
 					if scale ~= suggestedscale then
@@ -1094,7 +1154,7 @@ function love.keypressed( key, unicode )
 				love.audio.play(pausesound)
 			else
 				if musicno < 4 then
-					love.audio.resume(music[musicno])
+					love.audio.play(music[musicno])
 				end
 			end
 		end
@@ -1105,9 +1165,9 @@ function love.keypressed( key, unicode )
 			end
 			
 			if pause == false and (cuttingtimer == lineclearduration or gamestate == "gameB") then
-				--if key == "up" then --STOP ROTATION OF BLOCK (makes it too easy..)
-				--	tetribodies[counter]:setAngularVelocity(0)
-				--end
+				-- if key == "up" then -- STOP ROTATION OF BLOCK (makes it too easy..)
+				-- 	tetribodies[counter]:setAngularVelocity(0)
+				-- end
 				if controls.check("left", key) or controls.check("right", key) then
 					love.audio.stop(blockmove)
 					love.audio.play(blockmove)
@@ -1120,7 +1180,7 @@ function love.keypressed( key, unicode )
 	elseif gamestate == "gameBmulti" and gamestarted == false then
 		if controls.check("escape", key) then
 			if not fullscreen then
-				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+				love.window.setMode(160*scale, 144*scale, {fullscreen = false, vsync = vsync, msaa = 0, display = currentDisplay})
 			end
 			gamestate = "multimenu"
 			if musicno < 4 then
@@ -1130,7 +1190,7 @@ function love.keypressed( key, unicode )
 	elseif gamestate == "gameBmulti" and gamestarted == true then
 		if controls.check("escape", key) then
 			if not fullscreen then
-				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+				love.window.setMode(160*scale, 144*scale, {fullscreen = false, vsync = vsync, msaa = 0, display = currentDisplay})
 			end
 			gamestate = "multimenu"
 		end
@@ -1149,7 +1209,7 @@ function love.keypressed( key, unicode )
 				love.audio.play(music[musicno])
 			end
 			if not fullscreen then
-				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+				love.window.setMode(160*scale, 144*scale, {fullscreen = false, vsync = vsync, msaa = 0, display = currentDisplay})
 			end
 			gamestate = "multimenu"
 		end
@@ -1172,13 +1232,13 @@ function love.keypressed( key, unicode )
 				love.audio.play(music[musicno])
 			end
 		elseif key == "backspace" then
-			if highscorename[highscoreno]:len() > 0 then
+			if #highscorename[highscoreno] > 0 then
 				cursorblink = true
 				highscorename[highscoreno] = string.sub(highscorename[highscoreno], 1, highscorename[highscoreno]:len()-1)
 			end
 			
 		elseif whitelist[unicode] == true then
-			if highscorename[highscoreno]:len() < 6 then
+			if #highscorename[highscoreno] < 6 then
 				cursorblink = true
 				highscorename[highscoreno] = highscorename[highscoreno] .. string.char(unicode)
 				love.audio.stop(highscorebeep)
@@ -1192,4 +1252,19 @@ function love.keypressed( key, unicode )
 			failed_checkhighscores()
 		end
 	end
+end
+
+-- love.textinput is used to receive text input (for highscore entry)
+function love.textinput(t)
+    if gamestate == "highscoreentry" then
+        local byte = string.byte(t)
+        if whitelist[byte] == true then
+            if #highscorename[highscoreno] < 6 then
+                cursorblink = true
+                highscorename[highscoreno] = highscorename[highscoreno] .. t
+                love.audio.stop(highscorebeep)
+                love.audio.play(highscorebeep)
+            end
+        end
+    end
 end
