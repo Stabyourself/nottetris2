@@ -1,3 +1,7 @@
+-- rocket.lua (Ported to LÖVE 11.5)
+-- Handles the rocket sequence: loading, updating, and drawing the rocket takeoff scene.
+
+
 function rocket_load()
 	rocketscores = {}
 	if gameno == 1 then
@@ -36,7 +40,7 @@ function rocket_load()
 end
 
 function rocket_update()
-	--check for sequence over
+	-- check for sequence over
 	if gamestate == "rocket4" then
 		if timelapsed > 41.1 then
 			failed_checkhighscores()
@@ -49,34 +53,34 @@ function rocket_update()
 end
 
 function rocket_draw()
-	--FULLSCREEN OFFSET
+	-- FULLSCREEN OFFSET
 	if fullscreen then
 		love.graphics.translate(fullscreenoffsetX, fullscreenoffsetY)
 		
-		--scissor
+		-- scissor
 		love.graphics.setScissor(fullscreenoffsetX, fullscreenoffsetY, 160*scale, 144*scale)
 	end
 	
 	currenttime = love.timer.getTime()
 	timelapsed = currenttime - rockettimer
 	
-	--background
+	-- background
 	love.graphics.draw( rocketbackground, 0, 0, 0, scale, scale)
 	if gamestate == "rocket4" then
 		love.graphics.draw( bigrockettakeoffbackground, 54*scale, 60*scale, 0, scale, scale)
 	end
 	
-	--rocket position
+	-- rocket position
 	if gamestate == "rocket4" then
 		rocketpos = 112 - 112*((timelapsed-12)/18)
 	else
 		rocketpos = 112 - 112*((timelapsed-8)/18)
 	end
 	
-	--fire
+	-- fire
 	if gamestate == "rocket4" then
 		if timelapsed > 13 then
-			if math.mod( math.floor(timelapsed*8), 2) == 0 then
+			if ( math.floor(timelapsed*8) % 2) == 0 then
 				love.graphics.draw( firebig1, 68*scale, round(rocketpos*scale), 0, scale, scale)
 			else
 				love.graphics.draw( firebig2, 68*scale, round(rocketpos*scale), 0, scale, scale)
@@ -84,7 +88,7 @@ function rocket_draw()
 		end
 	else
 		if timelapsed > 8.5 then
-			if math.mod( math.floor(timelapsed*8), 2) == 0 then
+			if ( math.floor(timelapsed*8) % 2) == 0 then
 				love.graphics.draw( fire1, 77*scale, round(rocketpos*scale), 0, scale, scale)
 			else
 				love.graphics.draw( fire2, 76*scale, round(rocketpos*scale), 0, scale, scale)
@@ -92,12 +96,13 @@ function rocket_draw()
 		end
 	end
 	
-	--rocket
+	-- rocket
 	if gamestate == "rocket4" then
 		if timelapsed < 12 then
 			love.graphics.draw( bigrocketbackground, 64*scale, 48*scale, 0, scale, scale)
 		else
-			love.graphics.draw( spaceshuttle, 64*scale, round(rocketpos*scale), 0, scale, scale, 0, 64)--18 seconds for 112 pixels
+			-- 18 seconds for 112 pixels
+			love.graphics.draw( spaceshuttle, 64*scale, round(rocketpos*scale), 0, scale, scale, 0, 64)
 		end
 	else
 		if timelapsed < 8 then
@@ -119,29 +124,29 @@ function rocket_draw()
 		end
 	end
 	
-	--smoke
+	-- smoke
 	if gamestate == "rocket4" then
 		if timelapsed > 3 and timelapsed < 8 then
-			if math.mod( math.floor(timelapsed*6), 2) == 0 then
+			if ( math.floor(timelapsed*6) % 2) == 0 then
 				love.graphics.draw( smoke1left, 50*scale, 106*scale, 0, scale, scale)
 				love.graphics.draw( smoke1right, 92*scale, 106*scale, 0, scale, scale)
 			end
 		elseif timelapsed > 8 and timelapsed < 13 then
-			if math.mod( math.floor(timelapsed*6), 2) == 0 then
+			if ( math.floor(timelapsed*6) % 2) == 0 then
 				love.graphics.draw( smoke2left, 44*scale, 98*scale, 0, scale, scale)
 				love.graphics.draw( smoke2right, 92*scale, 98*scale, 0, scale, scale)
 			end
 		end
 	else
 		if timelapsed > 3 and timelapsed < 8.5 then
-			if math.mod( math.floor(timelapsed*6), 2) == 0 then
+			if ( math.floor(timelapsed*6) % 2) == 0 then
 				love.graphics.draw( smoke1left, 56*scale, 106*scale, 0, scale, scale)
 				love.graphics.draw( smoke1right, 86*scale, 106*scale, 0, scale, scale)
 			end
 		end
 	end
 	
-	--text
+	-- text
 	if gamestate == "rocket4" then
 		symbolsnumber = 0
 		for i = 16, 1, -1 do
@@ -156,11 +161,11 @@ function rocket_draw()
 		end
 	end
 	
-	--FULLSCREEN OFFSET
+	-- FULLSCREEN OFFSET
 	if fullscreen then
 		love.graphics.translate(-fullscreenoffsetX, -fullscreenoffsetY)
 		
-		--scissor
+		-- scissor
 		love.graphics.setScissor()
 	end
 end
