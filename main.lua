@@ -25,10 +25,13 @@ function love.load()
 	
 	loadoptions()
 	
-	maxscale = math.min(math.floor(desktopheight/144), math.floor(desktopwidth/160)) 
-	maxmpscale = math.min(math.floor(desktopheight/144), math.floor(desktopwidth/274)) 
-	
-	if fullscreen == false then
+	maxscale = math.min(math.floor(desktopheight/144), math.floor(desktopwidth/160))
+	maxmpscale = math.min(math.floor(desktopheight/144), math.floor(desktopwidth/274))
+
+	if isweb then
+		fullscreen = true
+		fitwindow()
+	elseif fullscreen == false then
 		if scale ~= 5 then
 			love.window.setMode( 160*scale, 144*scale, {vsync = vsync} )
 		end
@@ -372,6 +375,9 @@ function love.update(dt)
 end
 
 function love.draw()
+	if isweb then
+		love.graphics.scale(1/love.graphics.getDPIScale())
+	end
 	if gamestate == "logo" or gamestate == "credits" or gamestate == "title" or gamestate == "menu" or gamestate == "multimenu" or gamestate == "highscoreentry" or gamestate == "options" then
 		menu_draw()
 	elseif gamestate == "gameA" or gamestate == "failingA" then
@@ -610,6 +616,9 @@ end
 
 
 function togglefullscreen(fullscr)
+	if isweb then
+		return
+	end
 	fullscreen = fullscr
 	love.mouse.setVisible( not fullscreen )
 	if fullscr == false then
@@ -631,6 +640,95 @@ function togglefullscreen(fullscr)
 		
 		fullscreenoffsetX = (desktopwidth-160*scale)/2
 		fullscreenoffsetY = (desktopheight-144*scale)/2
+	end
+end
+
+--web: biggest whole scale that fits, drawn in screen pixels
+if love.system.getOS() == "Web" then
+	local setScissor = love.graphics.setScissor
+	love.graphics.setScissor = function(x, y, w, h)
+		if x then
+			local d = love.graphics.getDPIScale()
+			setScissor(x/d, y/d, w/d, h/d)
+		else
+			setScissor()
+		end
+	end
+end
+
+local function rescaleimagedata(data, from, to)
+	local w = math.floor(data:getWidth()/from*to + 0.5)
+	local h = math.floor(data:getHeight()/from*to + 0.5)
+	local out = love.image.newImageData(w, h)
+	out:mapPixel(function(x, y)
+		return data:getPixel(math.floor(x*from/to), math.floor(y*from/to))
+	end)
+	return out
+end
+
+function fitwindow()
+	desktopwidth, desktopheight = love.graphics.getPixelDimensions()
+	maxscale = math.max(1, math.min(math.floor(desktopheight/144), math.floor(desktopwidth/160)))
+	maxmpscale = math.max(1, math.min(math.floor(desktopheight/144), math.floor(desktopwidth/274)))
+	suggestedscale = math.min(maxscale, 5)
+
+	local oldscale = scale
+	scale = maxscale
+	physicsscale = scale/4
+	fullscreenoffsetX = math.floor((desktopwidth-160*scale)/2)
+	fullscreenoffsetY = math.floor((desktopheight-144*scale)/2)
+
+	if not pieceimagedata then --still loading
+		return
+	end
+
+	if scale ~= oldscale then
+		loadpieceimages(scale)
+		if gamestate == "gameA" or gamestate == "failingA" then --cut pieces
+			for id in pairs(tetrikind) do
+				if tetriimagedata[id] then
+					tetriimagedata[id] = rescaleimagedata(tetriimagedata[id], oldscale, scale)
+					tetriimages[id] = padImagedata(tetriimagedata[id])
+				end
+			end
+		elseif gamestate == "gameB" or gamestate == "failingB" then
+			for id, kind in pairs(tetrikind) do
+				tetriimages[id] = nextpieceimg[kind]
+			end
+		end
+	end
+
+	if gamestate == "gameBmulti" or gamestate == "failingBmulti" or gamestate == "failedBmulti" or gamestate == "gameBmulti_results" then
+		fitmultiplayer()
+	end
+end
+
+function fitmultiplayer() --like gameBmulti_load
+	local oldmpscale = mpscale
+	mpscale = scale
+	while 274*mpscale > desktopwidth and mpscale > 1 do
+		mpscale = mpscale - 1
+	end
+	physicsmpscale = mpscale/4
+	mpfullscreenoffsetX = math.floor((desktopwidth-274*mpscale)/2)
+	mpfullscreenoffsetY = math.floor((desktopheight-144*mpscale)/2)
+
+	if nextpieceimgmp and mpscale ~= oldmpscale then
+		for i = 1, 7 do
+			nextpieceimgmp[i] = newPaddedImage( "graphics/pieces/"..i..".png", mpscale )
+		end
+		for id, kind in pairs(tetrikindp1) do
+			tetriimagesp1[id] = nextpieceimgmp[kind]
+		end
+		for id, kind in pairs(tetrikindp2) do
+			tetriimagesp2[id] = nextpieceimgmp[kind]
+		end
+	end
+end
+
+function love.resize()
+	if isweb then
+		fitwindow()
 	end
 end
 

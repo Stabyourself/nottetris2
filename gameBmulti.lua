@@ -9,15 +9,19 @@ function gameBmulti_load()
 	beeped = {false, false, false}
 	
 	--figure out the multiplayer scale
-	mpscale = scale
-	while 274*mpscale > desktopwidth do
-		mpscale = mpscale - 1
+	if isweb then
+		fitmultiplayer()
+	else
+		mpscale = scale
+		while 274*mpscale > desktopwidth do
+			mpscale = mpscale - 1
+		end
+		physicsmpscale = mpscale/4
+
+		mpfullscreenoffsetX = (desktopwidth-274*mpscale)/2
+		mpfullscreenoffsetY = (desktopheight-144*mpscale)/2
 	end
-	physicsmpscale = mpscale/4
-	
-	mpfullscreenoffsetX = (desktopwidth-274*mpscale)/2
-	mpfullscreenoffsetY = (desktopheight-144*mpscale)/2
-	
+
 	if not fullscreen then
 		love.window.setMode( 274*mpscale, 144*mpscale, {vsync = vsync, msaa = 16} )
 	end
