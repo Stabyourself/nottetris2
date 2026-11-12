@@ -1,9 +1,9 @@
 function love.conf(t)
-	t.title = "Not Tetris 2"
-	t.author = "Maurice"
+	t.version = "11.5"
 	t.identity = "not_tetris_2"
-	t.screen.width = 800
-	t.screen.height = 720
-	t.screen.fsaa = 0
-	t.screen.vsync = true
+	t.window.title = "Not Tetris 2"
+	t.window.width = 800
+	t.window.height = 720
+	t.window.msaa = 0
+	t.window.vsync = 1
 end

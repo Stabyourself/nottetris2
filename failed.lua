@@ -2,6 +2,7 @@ function failed_load()
 	gamestate = "failed"
 	tetribodies = {} -- CLEAR ALL
 	tetrishapes = {} -- PIECES
+	tetrifixtures = {}
 	love.audio.play(gameover2)
 end
 

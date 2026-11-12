@@ -8,7 +8,7 @@ function love.load()
 	require "failed"
 	require "rocket"
 	
-	vsync = true
+	vsync = 1
 	
 	autosize()
 	
@@ -24,10 +24,10 @@ function love.load()
 	
 	if fullscreen == false then
 		if scale ~= 5 then
-			love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+			love.window.setMode( 160*scale, 144*scale, {vsync = vsync} )
 		end
 	else
-		love.graphics.setMode( 0, 0, true, vsync, 0 )
+		love.window.setMode( 0, 0, {fullscreen = true, vsync = vsync} )
 		love.mouse.setVisible( false )
 		desktopwidth, desktopheight = love.graphics.getWidth(), love.graphics.getHeight()
 		saveoptions()
@@ -93,7 +93,7 @@ function love.load()
 	musicoptions:setVolume( 1 )
 	musicoptions:setLooping( true )
 	
-	boot = love.audio.newSource( "sounds/boot.ogg")
+	boot = love.audio.newSource( "sounds/boot.ogg", "static")
 	blockfall = love.audio.newSource( "sounds/blockfall.ogg", "stream")
 	blockturn = love.audio.newSource( "sounds/turn.ogg", "stream")
 	blockmove = love.audio.newSource( "sounds/move.ogg", "stream")
@@ -133,7 +133,7 @@ function love.load()
 	math.randomseed( os.time() )
 	math.random();math.random();math.random() --discarding some as they seem to tend to unrandomness.
 	
-	love.graphics.setBackgroundColor( 255, 255, 255 )
+	love.graphics.setBackgroundColor( 1, 1, 1 )
 
 	p1wins = 0
 	p2wins = 0
@@ -161,15 +161,21 @@ function love.load()
 	minfps = 1/50 --dt doesn't go higher than this
 	scoreaddtime = 0.5
 	startdelaytime = 0
-	density = 0.1
 	
 	blockstartY = -64 --where new blocks are created
 	losingY = 0 --lose if block 1 collides above this line
-	blockmass = 5 --probably obsolete because body:setMassFromShapes()
-	blockrot = 10
+	blockfriction = 0.5
 	blockrestitution = 0.1
 	minmass = 1
 	
+	meter = 30 --pixels per meter
+	blockforce = 70*meter --sideways
+	blockdownforce = 20*meter
+	blocktorque = 70*meter*meter
+	velocityiterations = 10 --box2d solver iterations per step
+	positioniterations = 10
+	fixtureshrink = 0.01*meter --box2d keeps this much room around every polygon (b2_polygonRadius)
+
 	optionschoices = {"volume", "color", "scale", "fullscrn"}
 	
 	piececenter = {}
@@ -383,18 +389,19 @@ function newImageData(path, s)
 	for y = 0, height-1 do
 		for x = 0, width-1 do
 			local oldr, oldg, oldb, olda = imagedata:getPixel(x, y)
+			oldr = oldr*255
 			
 			if olda ~= 0 then
 				if oldr > 203 and oldr < 213 then --lightgrey
-					local r = 145 + rr*64
-					local g = 145 + rg*64
-					local b = 145 + rb*64
-					imagedata:setPixel(x, y, r, g, b, olda)
+					local r = math.floor(145 + rr*64)
+					local g = math.floor(145 + rg*64)
+					local b = math.floor(145 + rb*64)
+					imagedata:setPixel(x, y, r/255, g/255, b/255, olda)
 				elseif oldr > 107 and oldr < 117 then --darkgrey
-					local r = 73 + rr*43
-					local g = 73 + rg*43
-					local b = 73 + rb*43
-					imagedata:setPixel(x, y, r, g, b, olda)
+					local r = math.floor(73 + rr*43)
+					local g = math.floor(73 + rg*43)
+					local b = math.floor(73 + rb*43)
+					imagedata:setPixel(x, y, r/255, g/255, b/255, olda)
 				end
 			end
 		end
@@ -444,23 +451,10 @@ function padImagedata(source) --returns image, not imagedata!
 end
 
 function newPaddedImageFont(filename, glyphs)
-    local source = newImageData(filename)
-    local w, h = source:getWidth(), source:getHeight()
-   
-    -- Find closest power-of-two.
-    local wp = math.pow(2, math.ceil(math.log(w)/math.log(2)))
-    local hp = math.pow(2, math.ceil(math.log(h)/math.log(2)))
-   
-    -- Only pad if needed:
-    if wp ~= w or hp ~= h then
-        local padded = love.image.newImageData(wp, hp)
-        padded:paste(source, 0, 0)
-		local image = love.graphics.newImage(padded)
-		image:setFilter("nearest", "nearest")
-        return love.graphics.newImageFont(image, glyphs)
-    end
-	
-    return love.graphics.newImageFont(source, glyphs)
+	--glyphs are 7 pixels wide and 8 apart
+	local font = love.graphics.newImageFont(newImageData(filename), glyphs, 1)
+	font:setFilter("nearest", "nearest")
+	return font
 end
 
 function scaleImagedata(imagedata, i)
@@ -529,7 +523,7 @@ function loadconfig()
 end
 
 function loadoptions()
-	if love.filesystem.exists("options.txt") then
+	if love.filesystem.getInfo("options.txt") then
 		local s = love.filesystem.read("options.txt")
 		local split1 = s:split("\n")
 		for i = 1, #split1 do
@@ -599,9 +593,9 @@ function saveoptions()
 end
 
 function autosize()
-	local modes = love.graphics.getModes()
-	desktopwidth, desktopheight = modes[1]["width"], modes[1]["height"]
+	desktopwidth, desktopheight = love.window.getDesktopDimensions()
 end
+
 
 function togglefullscreen(fullscr)
 	fullscreen = fullscr
@@ -609,9 +603,9 @@ function togglefullscreen(fullscr)
 	if fullscr == false then
 		scale = suggestedscale
 		physicsscale = scale/4
-		love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+		love.window.setMode( 160*scale, 144*scale, {vsync = vsync} )
 	else
-		love.graphics.setMode( 0, 0, true, vsync, 16 )
+		love.window.setMode( 0, 0, {fullscreen = true, vsync = vsync, msaa = 16} )
 		desktopwidth, desktopheight = love.graphics.getWidth(), love.graphics.getHeight()
 		suggestedscale = math.min(math.floor((desktopheight-50)/144), math.floor((desktopwidth-10)/160))
 		suggestedscale = math.min(math.floor((desktopheight-50)/144), math.floor((desktopwidth-10)/160))
@@ -635,7 +629,7 @@ function loadhighscores()
 		fileloc = "highscoresB.txt"
 	end
 	
-	if love.filesystem.exists( fileloc ) then
+	if love.filesystem.getInfo( fileloc ) then
 		
 		highdata = love.filesystem.read( fileloc )
 		highdata = highdata:split(";")
@@ -685,7 +679,7 @@ function savehighscores()
 end
 
 function changescale(i)
-	love.graphics.setMode( 160*i, 144*i, false, vsync, 0 )
+	love.window.setMode( 160*i, 144*i, {vsync = vsync} )
 	nextpieceimg = {}
 	for j = 1, 7 do
 		nextpieceimg[j] = newPaddedImage( "graphics/pieces/"..j..".png", i )
@@ -737,24 +731,117 @@ function table2string(mytable)
 	return output
 end
 
-function getPoints2table(shape)
-	x1,y1,x2,y2,x3,y3,x4,y4,x5,y5,x6,y6,x7,y7,x8,y8 = shape:getPoints()
-	if x4 == nil then
-		return {x1,y1,x2,y2,x3,y3}
+function getPoints2table(body, shape) --world coordinates of a shape on a body
+	return {body:getWorldPoints(shape:getPoints())}
+end
+
+function newtetrishapes(i) --the four blocks of a piece
+	local blocks
+	if i == 1 then --I
+		blocks = {-48,0, -16,0, 16,0, 48,0}
+	elseif i == 2 then --J
+		blocks = {-32,-16, 0,-16, 32,-16, 32,16}
+	elseif i == 3 then --L
+		blocks = {-32,-16, 0,-16, 32,-16, -32,16}
+	elseif i == 4 then --O
+		blocks = {-16,-16, -16,16, 16,16, 16,-16}
+	elseif i == 5 then --S
+		blocks = {-32,16, 0,-16, 32,-16, 0,16}
+	elseif i == 6 then --T
+		blocks = {-32,-16, 0,-16, 32,-16, 0,16}
+	elseif i == 7 then --Z
+		blocks = {0,16, 0,-16, 32,16, -32,-16}
 	end
-	if x5 == nil then
-		return {x1,y1,x2,y2,x3,y3,x4,y4}
+	
+	local shapes = {}
+	for j = 1, 4 do
+		shapes[j] = love.physics.newRectangleShape(blocks[j*2-1], blocks[j*2], 32, 32)
 	end
-	if x6 == nil then
-		return {x1,y1,x2,y2,x3,y3,x4,y4,x5,y5}
+	return shapes
+end
+
+function newtetrifixture(body, shape)
+	--Box2D keeps a little room around polygons, so two of them never quite touch.
+	--The fixture is that little bit smaller than the shape, which puts things back where they look right.
+	local points = shrinkpolygon({shape:getPoints()}, fixtureshrink)
+	if points then
+		local ok, smallshape = pcall(love.physics.newPolygonShape, unpack(points))
+		if ok then
+			shape = smallshape
+		end
 	end
-	if x7 == nil then
-		return {x1,y1,x2,y2,x3,y3,x4,y4,x5,y5,x6,y6}
+
+	local fixture = love.physics.newFixture(body, shape, 1)
+	fixture:setFriction(blockfriction)
+	fixture:setRestitution(blockrestitution)
+	return fixture
+end
+
+function settetrimass(body, shapes) --gives a body the mass of its shapes (and not of its slightly smaller fixtures)
+	local mass, centerx, centery, inertia = 0, 0, 0, 0
+	for i, v in pairs(shapes) do
+		local x, y, m, shapeinertia = v:computeMass(1)
+		mass = mass + m
+		centerx = centerx + x*m
+		centery = centery + y*m
+		inertia = inertia + shapeinertia
 	end
-	if x8 == nil then
-		return {x1,y1,x2,y2,x3,y3,x4,y4,x5,y5,x6,y6,x7,y7}
+
+	if mass > 0 then
+		centerx = centerx/mass
+		centery = centery/mass
+
+		if mass < minmass then
+			inertia = inertia*minmass/mass
+			mass = minmass
+		end
+
+		body:setMassData(centerx, centery, mass, inertia)
 	end
-	return     {x1,y1,x2,y2,x3,y3,x4,y4,x5,y5,x6,y6,x7,y7,x8,y8}
+end
+
+function shrinkpolygon(points, amount) --moves every side of a convex polygon inwards. returns nil if nothing is left
+	local polygon = points
+	local count = #points/2
+
+	for i = 1, count do
+		local j = i % count + 1
+		local x1, y1 = points[i*2-1], points[i*2]
+		local sidex, sidey = points[j*2-1]-x1, points[j*2]-y1
+		local length = math.sqrt(sidex^2 + sidey^2)
+
+		if length > 0 then
+			--cut off everything that's too close to this side
+			local normalx, normaly = sidey/length, -sidex/length
+			local limit = normalx*x1 + normaly*y1 - amount
+
+			local cut = {}
+			for k = 1, #polygon, 2 do
+				local l = (k+1) % #polygon + 1
+				local ax, ay = polygon[k], polygon[k+1]
+				local bx, by = polygon[l], polygon[l+1]
+				local dista = normalx*ax + normaly*ay - limit
+				local distb = normalx*bx + normaly*by - limit
+
+				if dista <= 0 then
+					table.insert(cut, ax)
+					table.insert(cut, ay)
+				end
+				if (dista < 0 and distb > 0) or (dista > 0 and distb < 0) then
+					local t = dista/(dista-distb)
+					table.insert(cut, ax + (bx-ax)*t)
+					table.insert(cut, ay + (by-ay)*t)
+				end
+			end
+
+			polygon = cut
+			if #polygon < 6 then
+				return nil
+			end
+		end
+	end
+
+	return polygon
 end
 
 function getrainbowcolor(i)
@@ -788,7 +875,11 @@ function getrainbowcolor(i)
 	return {r, g, b}
 end
 
-function love.keypressed( key, unicode )
+function love.keypressed( key )
+	--the typed character for the highscore name comes in through love.textinput.
+	--Only take the one that belongs to this key press, so held keys don't repeat.
+	textkeypressed = true
+	
 	if gamestate == nil then
 		if controls.check("return", key) then
 			gamestate = "title"
@@ -836,7 +927,7 @@ function love.keypressed( key, unicode )
 				optionsselection = 1
 			end
 		elseif controls.check("escape", key) then
-			love.event.push("q")
+			love.event.quit()
 		elseif controls.check("left", key) and playerselection > 1 then
 			playerselection = playerselection - 1
 		elseif controls.check("right", key) and playerselection < 3 then
@@ -1094,7 +1185,7 @@ function love.keypressed( key, unicode )
 				love.audio.play(pausesound)
 			else
 				if musicno < 4 then
-					love.audio.resume(music[musicno])
+					love.audio.play(music[musicno])
 				end
 			end
 		end
@@ -1120,7 +1211,7 @@ function love.keypressed( key, unicode )
 	elseif gamestate == "gameBmulti" and gamestarted == false then
 		if controls.check("escape", key) then
 			if not fullscreen then
-				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+				love.window.setMode( 160*scale, 144*scale, {vsync = vsync} )
 			end
 			gamestate = "multimenu"
 			if musicno < 4 then
@@ -1130,7 +1221,7 @@ function love.keypressed( key, unicode )
 	elseif gamestate == "gameBmulti" and gamestarted == true then
 		if controls.check("escape", key) then
 			if not fullscreen then
-				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+				love.window.setMode( 160*scale, 144*scale, {vsync = vsync} )
 			end
 			gamestate = "multimenu"
 		end
@@ -1149,7 +1240,7 @@ function love.keypressed( key, unicode )
 				love.audio.play(music[musicno])
 			end
 			if not fullscreen then
-				love.graphics.setMode( 160*scale, 144*scale, false, vsync, 0 )
+				love.window.setMode( 160*scale, 144*scale, {vsync = vsync} )
 			end
 			gamestate = "multimenu"
 		end
@@ -1176,20 +1267,30 @@ function love.keypressed( key, unicode )
 				cursorblink = true
 				highscorename[highscoreno] = string.sub(highscorename[highscoreno], 1, highscorename[highscoreno]:len()-1)
 			end
-			
-		elseif whitelist[unicode] == true then
-			if highscorename[highscoreno]:len() < 6 then
-				cursorblink = true
-				highscorename[highscoreno] = highscorename[highscoreno] .. string.char(unicode)
-				love.audio.stop(highscorebeep)
-				love.audio.play(highscorebeep)
-			end
 		end
 	elseif string.sub(gamestate, 1, 6) == "rocket" then
 		if controls.check("return", key) then
 			love.audio.stop(musicrocket1to3)
 			love.audio.stop(musicrocket4)
 			failed_checkhighscores()
+		end
+	end
+end
+
+function love.textinput( text )
+	if not textkeypressed then
+		return
+	end
+	textkeypressed = false
+	
+	local unicode = text:byte()
+	
+	if gamestate == "highscoreentry" and text:len() == 1 and whitelist[unicode] == true then
+		if highscorename[highscoreno]:len() < 6 then
+			cursorblink = true
+			highscorename[highscoreno] = highscorename[highscoreno] .. string.char(unicode)
+			love.audio.stop(highscorebeep)
+			love.audio.play(highscorebeep)
 		end
 	end
 end
