@@ -1,4 +1,10 @@
 function love.load()
+	isweb = love.system.getOS() == "Web" -- running in a browser through love.js
+	if isweb then
+		-- there's nothing to quit to in a browser tab
+		love.event.quit = function() end
+	end
+	
 	--requires--
 	require "controls"
 	require "gameB"
