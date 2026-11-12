@@ -69,9 +69,9 @@ end
 
 function createtetriA(i, uniqueid, x, y) --creates block, including body, shapes, fixtures, image, imagedata and whatnot.
 
-	tetriimagedata[uniqueid] = newImageData( "graphics/pieces/"..i..".png", scale)
-	tetriimages[uniqueid] = padImagedata( tetriimagedata[uniqueid] )
-	tetrikind[uniqueid] = i
+	tetriimagedata[uniqueid] = pieceimagedata[i]:clone()
+	tetriimages[uniqueid] = nextpieceimg[i]
+tetrikind[uniqueid] = i
 	
 	tetribodies[uniqueid] = love.physics.newBody(world, x, y, "dynamic")
 	tetribodies[uniqueid]:setLinearDamping(0.5)
@@ -540,13 +540,20 @@ end
 	end
 end
 
+clearstrips = {}
+function getclearstrip(width) --a row of transparent pixels
+	if not clearstrips[width] then
+		clearstrips[width] = love.image.newImageData(width, 1)
+		clearstrips[width]:mapPixel(function() return 1, 1, 1, 0 end)
+	end
+	return clearstrips[width]
+end
+
 function cutimage(bodyid, numberofgroups) --cuts the image of a body based on its shapes (2nd argument might be obsolete)
-	
+
 	local width = tetriimagedata[bodyid]:getWidth()
 	local height = tetriimagedata[bodyid]:getHeight()
 
-	local bodyx, bodyy = tetribodies[bodyid]:getPosition()
-	local bodyangle = tetribodies[bodyid]:getAngle()
 
 	--[[ This old method used the angle between the two cutting points and all the other points to determine if the point should be removed. 
 		 But it sometimes bugged out for reasons I couldn't figure out so I'm going for the less good looking easy approach. Boo :(
@@ -610,31 +617,60 @@ function cutimage(bodyid, numberofgroups) --cuts the image of a body based on it
 	local ang = math.atan2(point2[1] - point1[1], point2[2] - point1[2])
 	ang = -ang + math.pi]]--
 	
-	for y = 0, height-1 do
-		for x = 0, width-1 do
-		--[[local ang2 = math.atan2(x - point1[1], y - point1[2]) --PART OF OLD METHOD
-			ang2 = -ang2 + math.pi
-			
-			if (ang2 > ang and ang2 < ang + math.pi) or ang2 < ang - math.pi or (x < leftlimit or x > rightlimit) then
-				tetriimagedata[bodyid]:setPixel(x, y, 1, 1, 1, 0)
-			end]]
-			
-			local dummy1, dummy2 = tetribodies[bodyid]:getWorldPoint((x-width/2+.5)*(4/scale), (y-height/2+.5)*(4/scale))
-			local deletepixel = true
+	--Every row of the image is a line across the body. Whatever part of that line isn't inside of a shape gets cleared.
+	local pixelsize = 4/scale
+	local clearstrip = getclearstrip(width)
 
-			for i, v in pairs(tetrishapes[bodyid]) do
-				if v:testPoint( bodyx, bodyy, bodyangle, dummy1, dummy2 ) then
-deletepixel = false
+	local polygons = {}
+	for i, v in pairs(tetrishapes[bodyid]) do
+		table.insert(polygons, {v:getPoints()})
+	end
+
+	for y = 0, height-1 do
+		local liney = (y-height/2+.5)*pixelsize
+
+		--the pixels of this row that each shape covers
+		local spans = {}
+		for i, points in ipairs(polygons) do
+			local left, right = -math.huge, math.huge
+
+			for j = 1, #points, 2 do --every side cuts a bit off the line
+				local k = (j+1) % #points + 1
+				local normalx, normaly = points[k+1]-points[j+1], points[j]-points[k]
+				local dist = normaly*(liney-points[j+1])
+
+				if normalx > 0 then
+					right = math.min(right, points[j] - dist/normalx)
+				elseif normalx < 0 then
+					left = math.max(left, points[j] - dist/normalx)
+				elseif dist > 0 then --line is completely outside
+					left, right = 1, 0
 					break
 				end
 			end
-			
-			if deletepixel then
-				tetriimagedata[bodyid]:setPixel(x, y, 1, 1, 1, 0)
+
+			local first = math.max(math.ceil(left/pixelsize + width/2 - .5), 0)
+			local last = math.min(math.floor(right/pixelsize + width/2 - .5), width-1)
+			if first <= last then
+				table.insert(spans, {first, last})
 			end
 		end
+
+		table.sort(spans, function(a, b) return a[1] < b[1] end)
+
+		--clear everything in between
+		local x = 0
+		for i, span in ipairs(spans) do
+			if span[1] > x then
+				tetriimagedata[bodyid]:paste(clearstrip, x, y, 0, 0, span[1]-x, 1)
+			end
+			x = math.max(x, span[2]+1)
+		end
+		if x < width then
+			tetriimagedata[bodyid]:paste(clearstrip, x, y, 0, 0, width-x, 1)
+		end
 	end
-	
+
 	tetriimages[bodyid] = padImagedata( tetriimagedata[bodyid] )
 end
 
@@ -813,7 +849,7 @@ function checklinedensity(active) --checks all 18 lines and, if active == true, 
 							table.insert(tetricutpos, tetribodies[i]:getY())
 							table.insert(tetricutang, tetribodies[i]:getAngle())
 							table.insert(tetricutkind, tetrikind[i])
-							table.insert(tetricutimg, padImagedata(tetriimagedata[i]))
+							table.insert(tetricutimg, tetriimages[i])
 						end
 					end
 					
@@ -1071,7 +1107,7 @@ function collideA(a, b, coll) --box2d callback. calls endblock.
 					tetrikind[highestbody()+1] = tetrikind[1]
 					
 					tetriimagedata[highestbody()+1] = tetriimagedata[1]
-					tetriimages[highestbody()+1] = padImagedata( tetriimagedata[highestbody()+1] )
+					tetriimages[highestbody()+1] = tetriimages[1]
 					
 					tetribodies[highestbody()+1] = tetribodies[1]
 					tetribodies[highestbody()]:setLinearDamping(0.5)

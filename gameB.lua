@@ -66,7 +66,7 @@ end
 
 function createtetriB(i, uniqueid, x, y)
 
-	tetriimages[uniqueid] = newPaddedImage( "graphics/pieces/"..i..".png", scale )
+	tetriimages[uniqueid] = nextpieceimg[i]
 	tetrikind[uniqueid] = i
 
 	tetribodies[uniqueid] = love.physics.newBody(world, x, y, "dynamic")

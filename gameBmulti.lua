@@ -596,7 +596,7 @@ function game_addTetriBmultip2()
 end
 
 function createtetriBmultip1(i, uniqueid, x, y)
-	tetriimagesp1[uniqueid] = newPaddedImage( "graphics/pieces/"..i..".png", mpscale )
+	tetriimagesp1[uniqueid] = nextpieceimgmp[i]
 	tetrikindp1[uniqueid] = i
 
 	tetribodiesp1[uniqueid] = love.physics.newBody(world, x, y, "dynamic")
@@ -614,7 +614,7 @@ function createtetriBmultip1(i, uniqueid, x, y)
 end
 
 function createtetriBmultip2(i, uniqueid, x, y)
-	tetriimagesp2[uniqueid] = newPaddedImage( "graphics/pieces/"..i..".png", mpscale )
+	tetriimagesp2[uniqueid] = nextpieceimgmp[i]
 	tetrikindp2[uniqueid] = i
 
 	tetribodiesp2[uniqueid] = love.physics.newBody(world, x, y, "dynamic")

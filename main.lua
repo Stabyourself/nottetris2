@@ -211,8 +211,17 @@ function start()
 	menu_load()
 end
 
+function loadpieceimages(s) --pieces get colored and scaled once; every new piece starts out as a copy
+	pieceimagedata = {}
+	nextpieceimg = {}
+	for i = 1, 7 do
+		pieceimagedata[i] = newImageData( "graphics/pieces/"..i..".png", s )
+		nextpieceimg[i] = padImagedata( pieceimagedata[i] )
+	end
+end
+
 function loadimages()
-	--IMAGES--
+--IMAGES--
 	--menu--
 	stabyourselflogo = newPaddedImage("graphics/stabyourselflogo.png")
 	logo = newPaddedImage("graphics/logo.png")
@@ -270,12 +279,9 @@ function loadimages()
 	
 	congratsline = newPaddedImage("graphics/congratsline.png")
 	
-	--nextpiece
-	nextpieceimg = {}
-	for i = 1, 7 do
-		nextpieceimg[i] = newPaddedImage( "graphics/pieces/"..i..".png", scale )
-	end
-	
+	--pieces
+	loadpieceimages(scale)
+
 	--font--
 	tetrisfont = newPaddedImageFont("graphics/font.png", "0123456789abcdefghijklmnopqrstTuvwxyz.,'C-#_>:<! ")
 	whitefont = newPaddedImageFont("graphics/fontwhite.png", "0123456789abcdefghijklmnopqrstTuvwxyz.,'C-#_>:<!+ ")
@@ -680,10 +686,7 @@ end
 
 function changescale(i)
 	love.window.setMode( 160*i, 144*i, {vsync = vsync} )
-	nextpieceimg = {}
-	for j = 1, 7 do
-		nextpieceimg[j] = newPaddedImage( "graphics/pieces/"..j..".png", i )
-	end
+	loadpieceimages(i)
 	physicsscale = i/4
 end
 
