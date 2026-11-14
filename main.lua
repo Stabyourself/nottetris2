@@ -353,6 +353,8 @@ function love.update(dt)
 		return
 	end
 	
+	dt = math.min(dt, 1/20)
+	
 	if cuttingtimer ~= 0 then
 		dt = math.min(dt, minfps)
 	end
