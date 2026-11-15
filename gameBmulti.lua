@@ -356,28 +356,28 @@ if gamestarted == false then
 	elseif gamestate == "gameBmulti" then
 		--PLAYER 1--
 		if p1fail == false then
-			if love.keyboard.isDown( "h" ) then --clockwise
+			if love.keyboard.isScancodeDown("h") then --clockwise
 				if tetribodiesp1[counterp1]:getAngularVelocity() < 3 then
 					tetribodiesp1[counterp1]:applyTorque( blocktorque )
 				end
 			end
-			if love.keyboard.isDown( "g" ) then --counterclockwise
+			if love.keyboard.isScancodeDown("g") then --counterclockwise
 				if tetribodiesp1[counterp1]:getAngularVelocity() > -3 then
 					tetribodiesp1[counterp1]:applyTorque( -blocktorque )
 				end
 			end
 		   
-			if love.keyboard.isDown( "a" ) then --left
+			if love.keyboard.isScancodeDown("a") then --left
 				x, y = tetribodiesp1[counterp1]:getWorldCenter()
 				tetribodiesp1[counterp1]:applyForce( -blockforce, 0, x, y )
 			end
-			if love.keyboard.isDown( "d" ) then --right
+			if love.keyboard.isScancodeDown("d") then --right
 				x, y = tetribodiesp1[counterp1]:getWorldCenter()
 				tetribodiesp1[counterp1]:applyForce( blockforce, 0, x, y )
 			end
 			
 			local x, y = tetribodiesp1[counterp1]:getLinearVelocity()
-			if love.keyboard.isDown( "s" ) then --down
+			if love.keyboard.isScancodeDown("s") then --down
 				if y > difficulty_speed*5 then
 					tetribodiesp1[counterp1]:setLinearVelocity(x, difficulty_speed*5)
 				else
@@ -392,28 +392,28 @@ if gamestarted == false then
 		end
 		--PLAYER 2--
 		if p2fail == false then
-			if love.keyboard.isDown( "kp2" ) then --clockwise
+			if love.keyboard.isScancodeDown("kp2") then --clockwise
 				if tetribodiesp2[counterp2]:getAngularVelocity() < 3 then
 					tetribodiesp2[counterp2]:applyTorque( blocktorque )
 				end
 			end
-			if love.keyboard.isDown( "kp1" ) then --counterclockwise
+			if love.keyboard.isScancodeDown("kp1") then --counterclockwise
 				if tetribodiesp2[counterp2]:getAngularVelocity() > -3 then
 					tetribodiesp2[counterp2]:applyTorque( -blocktorque )
 				end
 			end
 		   
-			if love.keyboard.isDown( "left" ) then --left
+			if love.keyboard.isScancodeDown("left") then --left
 				x, y = tetribodiesp2[counterp2]:getWorldCenter()
 				tetribodiesp2[counterp2]:applyForce( -blockforce, 0, x, y )
 			end
-			if love.keyboard.isDown( "right" ) then --right
+			if love.keyboard.isScancodeDown("right") then --right
 				x, y = tetribodiesp2[counterp2]:getWorldCenter()
 				tetribodiesp2[counterp2]:applyForce( blockforce, 0, x, y )
 			end
 			
 			local x, y = tetribodiesp2[counterp2]:getLinearVelocity()
-			if love.keyboard.isDown( "down" ) then --down
+			if love.keyboard.isScancodeDown("down") then --down
 				if y > difficulty_speed*5 then
 					tetribodiesp2[counterp2]:setLinearVelocity(x, difficulty_speed*5)
 				else
@@ -515,20 +515,20 @@ end
 		end
 		
 		if winner == 1 then
-			if love.keyboard.isDown ("a") then
+			if love.keyboard.isScancodeDown("a") then
 				x, y = mariobody:getWorldCenter()
 				mariobody:applyForce( -30*meter, 0, x, y-8 )
 			end
-			if love.keyboard.isDown ("d") then
+			if love.keyboard.isScancodeDown("d") then
 				x, y = mariobody:getWorldCenter()
 				mariobody:applyForce( 30*meter, 0, x, y-8 )
 			end
 		elseif winner == 2 then
-			if love.keyboard.isDown ("left") then
+			if love.keyboard.isScancodeDown("left") then
 				x, y = luigibody:getWorldCenter()
 				luigibody:applyForce( -30*meter, 0, x, y-8 )
 			end
-			if love.keyboard.isDown ("right") then
+			if love.keyboard.isScancodeDown("right") then
 				x, y = luigibody:getWorldCenter()
 				luigibody:applyForce( 30*meter, 0, x, y-8 )
 			end

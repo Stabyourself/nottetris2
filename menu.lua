@@ -248,7 +248,7 @@ function menu_update(dt)
 	
 	if gamestate == "options" then
 		if optionsselection == 2 then
-			if love.keyboard.isDown("left") then
+			if controls.isDown("left") then
 				if hue > 0 then
 					hue = hue - 0.5*dt
 					if hue < 0 then
@@ -257,7 +257,7 @@ function menu_update(dt)
 					optionsmenu = newPaddedImage("graphics/options.png");optionsmenu:setFilter( "nearest", "nearest" )
 					volumeslider = newPaddedImage("graphics/volumeslider.png");volumeslider:setFilter( "nearest", "nearest" )
 				end
-			elseif love.keyboard.isDown("right") then
+			elseif controls.isDown("right") then
 				if hue < 1 then
 					hue = hue + 0.5*dt
 					if hue > 1 then

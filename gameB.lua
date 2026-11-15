@@ -165,28 +165,28 @@ function gameB_update(dt)
 	end
 
 	if gamestate == "gameB" then
-		if love.keyboard.isDown( "x" ) then
+		if controls.isDown("rotateright") then
 			if tetribodies[1]:getAngularVelocity() < 3 then
 				tetribodies[1]:applyTorque( blocktorque )
 			end
 		end
-		if love.keyboard.isDown( "y" ) or love.keyboard.isDown( "z" ) or love.keyboard.isDown( "w" ) then
+		if controls.isDown("rotateleft") then
 			if tetribodies[1]:getAngularVelocity() > -3 then
 				tetribodies[1]:applyTorque( -blocktorque )
 			end
 		end
 	
-		if love.keyboard.isDown( "left" ) then
+		if controls.isDown("left") then
 			local x, y = tetribodies[1]:getWorldCenter()
 			tetribodies[1]:applyForce( -blockforce, 0, x, y )
 		end
-		if love.keyboard.isDown( "right" ) then
+		if controls.isDown("right") then
 			local x, y = tetribodies[1]:getWorldCenter()
 			tetribodies[1]:applyForce( blockforce, 0, x, y )
 		end
 		
 		local x, y = tetribodies[1]:getLinearVelocity( )
-		if love.keyboard.isDown( "down" ) then
+		if controls.isDown("down") then
 			--commented part limits the blackfallspeed
 			if y > difficulty_speed*5 then
 				tetribodies[1]:setLinearVelocity(x, difficulty_speed*5)

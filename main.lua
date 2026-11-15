@@ -984,7 +984,8 @@ function getrainbowcolor(i)
 	return {r, g, b}
 end
 
-function love.keypressed( key )
+function love.keypressed( key, scancode )
+	controls.scancode = scancode
 	--the typed character for the highscore name comes in through love.textinput.
 	--Only take the one that belongs to this key press, so held keys don't repeat.
 	textkeypressed = true

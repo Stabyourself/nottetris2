@@ -1,40 +1,46 @@
 controls = {}
 controls.settings = {}
 
-controls.settings.left = {"key", {"left"}}
-controls.settings.right = {"key", {"right"}}
-controls.settings.up = {"key", {"up"}}
-controls.settings.down = {"key", {"down"}}
-controls.settings["return"] = {"key", {"return", "kpenter"}}
-controls.settings.escape = {"key", {"escape"}}
-controls.settings.rotateleft = {"key", {"y", "z", "w"}}
-controls.settings.rotateright = {"key", {"x"}}
+controls.settings.left = {"scancode", {"left"}}
+controls.settings.right = {"scancode", {"right"}}
+controls.settings.up = {"scancode", {"up"}}
+controls.settings.down = {"scancode", {"down"}}
+controls.settings["return"] = {"scancode", {"return", "kpenter"}}
+controls.settings.escape = {"scancode", {"escape"}}
+controls.settings.rotateleft = {"scancode", {"z"}}
+controls.settings.rotateright = {"scancode", {"x"}}
 
 --player 2
-controls.settings.leftp2 = {"key", {"j"}}
-controls.settings.rightp2 = {"key", {"k"}}
-controls.settings.downp2 = {"key", {"m"}}
-controls.settings.rotateleftp2 = {"key", {"o"}}
-controls.settings.rotaterightp2 = {"key", {"p"}}
+controls.settings.leftp2 = {"scancode", {"j"}}
+controls.settings.rightp2 = {"scancode", {"k"}}
+controls.settings.downp2 = {"scancode", {"m"}}
+controls.settings.rotateleftp2 = {"scancode", {"o"}}
+controls.settings.rotaterightp2 = {"scancode", {"p"}}
+
+controls.scancode = nil
 
 function controls.check(t, key)
-	if controls.settings[t][1] == "key" then
-		for i = 1, #controls.settings[t][2] do
-			if key == controls.settings[t][2][i] then
-				return true
-			end
-		end
-		return false
+	local pressed = key
+	if controls.settings[t][1] == "scancode" then
+		pressed = controls.scancode
 	end
+	for i = 1, #controls.settings[t][2] do
+		if pressed == controls.settings[t][2][i] then
+			return true
+		end
+	end
+	return false
 end
 
 function controls.isDown(t)
-	if controls.settings[t][1] == "key" then
-		for i = 1, #controls.settings[t][2] do
-			if love.keyboard.isDown(controls.settings[t][2][i]) then
-				return true
-			end
-		end
-		return false
+	local isDown = love.keyboard.isDown
+	if controls.settings[t][1] == "scancode" then
+		isDown = love.keyboard.isScancodeDown
 	end
+	for i = 1, #controls.settings[t][2] do
+		if isDown(controls.settings[t][2][i]) then
+			return true
+		end
+	end
+	return false
 end
