@@ -137,6 +137,9 @@ function love.load()
 	whitelist[46] = true -- .
 	whitelist[95] = true -- _
 	
+	--picked with up/down and locked in with x, for gamepads. It starts on the space, shown as the cursor
+	highscoreletters = " abcdefghijklmnopqrstuvwxyz0123456789-.,"
+	
 	-----------------------------
 	
 	math.randomseed( os.time() )
@@ -1389,6 +1392,19 @@ function love.keypressed( key, scancode )
 			if musicno < 4 then
 				love.audio.play(music[musicno])
 			end
+		elseif controls.check("down", key) or controls.check("up", key) then
+			local n = highscoreletters:len()
+			if controls.check("down", key) then
+				highscoreletter = highscoreletter % n + 1
+			else
+				highscoreletter = (highscoreletter - 2) % n + 1
+			end
+			cursorblink = true
+			love.audio.stop(blockmove)
+			love.audio.play(blockmove)
+		elseif controls.check("rotateright", key) then
+			--x typed on a keyboard is a letter: its textinput comes right after this and cancels it
+			lockletter = true
 		elseif key == "backspace" then
 			if highscorename[highscoreno]:len() > 0 then
 				cursorblink = true
@@ -1413,6 +1429,7 @@ function love.textinput( text )
 		return
 	end
 	textkeypressed = false
+	lockletter = false
 	
 	local unicode = text:byte()
 	
@@ -1420,6 +1437,7 @@ function love.textinput( text )
 		if highscorename[highscoreno]:len() < 6 then
 			cursorblink = true
 			highscorename[highscoreno] = highscorename[highscoreno] .. string.char(unicode)
+			highscoreletter = 1
 			love.audio.stop(highscorebeep)
 			love.audio.play(highscorebeep)
 		end

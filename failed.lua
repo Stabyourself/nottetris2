@@ -87,6 +87,8 @@ function failed_checkhighscores()
 			highscorename[i] = ""
 			highscore[i] = scorescore
 			cursorblink = true
+			highscoreletter = 1
+			lockletter = false
 			love.audio.play(highscoreintro)
 			highscoremusicstart = love.timer.getTime()
 			musicchanged = false

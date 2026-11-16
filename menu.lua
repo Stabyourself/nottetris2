@@ -163,9 +163,11 @@ function menu_draw()
 				offsetX = offsetX + 8*scale
 			end
 			if cursorblink == true then
-				love.graphics.print("_", 33*scale+offsetX, 110*scale+8*scale*(highscoreno-1), 0, scale)
-			else
-				love.graphics.print(" ", 33*scale+offsetX, 110*scale+8*scale*(highscoreno-1), 0, scale)
+				local letter = highscoreletters:sub(highscoreletter, highscoreletter)
+				if letter == " " then
+					letter = "_"
+				end
+				love.graphics.print(letter, 33*scale+offsetX, 110*scale+8*scale*(highscoreno-1), 0, scale)
 			end
 		else
 			if cursorblink == true then
@@ -271,6 +273,15 @@ function menu_update(dt)
 	end
 	
 	if gamestate == "highscoreentry" then
+		if lockletter then
+			lockletter = false
+			if highscorename[highscoreno]:len() < 6 then
+				cursorblink = true
+				highscorename[highscoreno] = highscorename[highscoreno] .. highscoreletters:sub(highscoreletter, highscoreletter)
+				love.audio.stop(highscorebeep)
+				love.audio.play(highscorebeep)
+			end
+		end
 		currenttime = love.timer.getTime()
 		if currenttime - oldtime > cursorblinkrate then
 			cursorblink = not cursorblink
