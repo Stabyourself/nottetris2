@@ -19,6 +19,33 @@ controls.settings.rotaterightp2 = {"scancode", {"p"}}
 
 controls.scancode = nil
 
+controls.menukeys = {
+	logo = {x = "return"},
+	credits = {x = "return"},
+	title = {x = "return"},
+	menu = {x = "return", z = "escape"},
+	multimenu = {x = "return", z = "escape"},
+	options = {z = "escape"},
+	failed = {x = "return", z = "escape"},
+	gameBmulti_results = {x = "return", z = "escape"},
+	rocket = {x = "return"},
+}
+
+controls.held = {}
+
+function controls.menukey(scancode)
+	local state = gamestate or "logo"
+	if state:sub(1, 6) == "rocket" then
+		state = "rocket"
+	end
+	local keys = controls.menukeys[state]
+	if keys and keys[scancode] then
+		controls.held[scancode] = true
+		return keys[scancode]
+	end
+	return scancode
+end
+
 function controls.check(t, key)
 	local pressed = key
 	if controls.settings[t][1] == "scancode" then
@@ -38,7 +65,8 @@ function controls.isDown(t)
 		isDown = love.keyboard.isScancodeDown
 	end
 	for i = 1, #controls.settings[t][2] do
-		if isDown(controls.settings[t][2][i]) then
+		local k = controls.settings[t][2][i]
+		if isDown(k) and not controls.held[k] then
 			return true
 		end
 	end
