@@ -377,9 +377,39 @@ function love.update(dt)
 end
 
 function love.draw()
-	if isweb then
-		love.graphics.scale(1/love.graphics.getDPIScale())
+	if not isweb then
+		drawgame()
+		return
 	end
+
+	--web: draw at the biggest whole scale that fits, then stretch that to the window
+	local w, h = 160*scale, 144*scale
+	if gamestate == "gameBmulti" or gamestate == "failingBmulti" or gamestate == "failedBmulti" or gamestate == "gameBmulti_results" then
+		w = 274*mpscale
+		h = 144*mpscale
+	end
+	if not screencanvas or screencanvas:getWidth() ~= w or screencanvas:getHeight() ~= h then
+		screencanvas = love.graphics.newCanvas(w, h, {dpiscale = 1})
+		screencanvas:setFilter("linear", "linear")
+	end
+
+	love.graphics.setCanvas(screencanvas)
+	love.graphics.clear(love.graphics.getBackgroundColor())
+	drawgame()
+	love.graphics.setCanvas()
+	love.graphics.setScissor()
+	love.graphics.origin()
+
+	local pw, ph = love.graphics.getPixelDimensions()
+	local d = love.graphics.getDPIScale()
+	local k = math.min(pw/w, ph/h)
+	local r, g, b, a = love.graphics.getColor()
+	love.graphics.setColor(1, 1, 1)
+	love.graphics.draw(screencanvas, math.floor((pw-w*k)/2)/d, math.floor((ph-h*k)/2)/d, 0, k/d, k/d)
+	love.graphics.setColor(r, g, b, a)
+end
+
+function drawgame()
 	if gamestate == "logo" or gamestate == "credits" or gamestate == "title" or gamestate == "menu" or gamestate == "multimenu" or gamestate == "highscoreentry" or gamestate == "options" then
 		menu_draw()
 	elseif gamestate == "gameA" or gamestate == "failingA" then
@@ -645,19 +675,6 @@ function togglefullscreen(fullscr)
 	end
 end
 
---web: biggest whole scale that fits, drawn in screen pixels
-if love.system.getOS() == "Web" then
-	local setScissor = love.graphics.setScissor
-	love.graphics.setScissor = function(x, y, w, h)
-		if x then
-			local d = love.graphics.getDPIScale()
-			setScissor(x/d, y/d, w/d, h/d)
-		else
-			setScissor()
-		end
-	end
-end
-
 local function rescaleimagedata(data, from, to)
 	local w = math.floor(data:getWidth()/from*to + 0.5)
 	local h = math.floor(data:getHeight()/from*to + 0.5)
@@ -677,8 +694,8 @@ function fitwindow()
 	local oldscale = scale
 	scale = maxscale
 	physicsscale = scale/4
-	fullscreenoffsetX = math.floor((desktopwidth-160*scale)/2)
-	fullscreenoffsetY = math.floor((desktopheight-144*scale)/2)
+	fullscreenoffsetX = 0
+	fullscreenoffsetY = 0
 
 	if not pieceimagedata then --still loading
 		return
@@ -712,8 +729,8 @@ function fitmultiplayer() --like gameBmulti_load
 		mpscale = mpscale - 1
 	end
 	physicsmpscale = mpscale/4
-	mpfullscreenoffsetX = math.floor((desktopwidth-274*mpscale)/2)
-	mpfullscreenoffsetY = math.floor((desktopheight-144*mpscale)/2)
+	mpfullscreenoffsetX = 0
+	mpfullscreenoffsetY = 0
 
 	if nextpieceimgmp and mpscale ~= oldmpscale then
 		for i = 1, 7 do

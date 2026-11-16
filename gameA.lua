@@ -921,7 +921,7 @@ function checklinedensity(active) --checks all 18 lines and, if active == true, 
 			--Draw the screen before removing lines.
 			love.graphics.origin()
 			love.graphics.clear(love.graphics.getBackgroundColor())
-			gameA_draw()
+			love.draw()
 			love.graphics.present( )
 			
 			for i = 1, 18 do
