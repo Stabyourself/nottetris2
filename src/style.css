@@ -693,9 +693,9 @@ table.board td.sub {
 /* ------------------------------------------------------------ touch controls */
 
 #touch {
-  /* Button size: 64px when there is room, shrinking so all five buttons fit on narrow phones.
-     74px = 16px side padding x2 + three 10px cluster gaps + the 12px gap between clusters. */
-  --btn: clamp(44px, (100vw - 74px) / 5, 64px);
+  /* Button size: 64px when there is room, shrinking so the widest row (four buttons) fits on
+     narrow phones. 64px = 16px side padding x2 + two 10px cluster gaps + the 12px gap between clusters. */
+  --btn: clamp(44px, (100vw - 64px) / 4, 64px);
   width: 100%;
   max-width: 640px;
   display: flex;
@@ -712,6 +712,20 @@ table.board td.sub {
 #touch .cluster {
   display: flex;
   gap: 10px;
+}
+
+/* Left and right side by side, down centred below them: a triangle. The negative row gap tucks
+   down up between the two round buttons (they still don't overlap) to keep the controls short,
+   since the field is sized to the height left above them. */
+#touch .dpad {
+  display: grid;
+  grid-template-columns: repeat(2, var(--btn));
+  gap: calc(var(--btn) * -0.15) 10px;
+}
+
+#touch .dpad [data-a='down'] {
+  grid-column: 1 / -1;
+  justify-self: center;
 }
 
 #touch button {
