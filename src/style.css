@@ -134,6 +134,12 @@ body {
   top: 3%;
 }
 
+/* Retro's title screen is taller, which puts Play a little lower */
+:root[data-theme='retro'] .menu.pinned {
+  top: calc(3% + var(--s) * 20px);
+  max-height: calc(94% - var(--s) * 20px);
+}
+
 .menu h1 {
   margin: 0 0 calc(var(--s) * 14px);
   font-size: calc(var(--s) * 28px);
