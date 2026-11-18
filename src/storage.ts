@@ -7,6 +7,8 @@ export interface Settings {
   track: number; // index into TRACKS, or -1 for off
   mode: GameMode;
   muted: boolean;
+  /** Last name entered for the leaderboard, offered again next time */
+  name: string;
 }
 
 export interface ScoreEntry {
@@ -18,7 +20,7 @@ const SETTINGS_KEY = 'slicefall.settings.v1';
 const SCORES_KEY = 'slicefall.scores.v1';
 export const TABLE_SIZE = 5;
 
-const DEFAULT_SETTINGS: Settings = { sfx: 0.8, music: 0.6, track: 0, mode: 'cut', muted: false };
+const DEFAULT_SETTINGS: Settings = { sfx: 0.8, music: 0.6, track: 0, mode: 'cut', muted: false, name: '' };
 
 function read<T>(key: string): T | null {
   try {

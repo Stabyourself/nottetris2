@@ -1,0 +1,10 @@
+.git
+.claude
+.github
+node_modules
+dist
+data
+.env
+.env.*
+!.env.example
+*.db

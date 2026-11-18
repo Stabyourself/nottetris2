@@ -44,6 +44,8 @@ export class SingleGame {
   readonly best: number;
   readonly pauseRect: Rect = { x: 410, y: 520, w: 186, h: 38 };
   paused = false;
+  /** Seconds of actual play (not paused, not the game-over fall), sent with the score. */
+  elapsed = 0;
 
   constructor(
     readonly mode: ScoredMode,
@@ -76,6 +78,7 @@ export class SingleGame {
 
   update(dt: number) {
     if (this.paused) return;
+    if (this.field.state === 'playing' || this.field.state === 'cutting') this.elapsed += dt;
     this.field.update(dt, singleControls());
   }
 

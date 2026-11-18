@@ -351,6 +351,102 @@ table.scores tr.me td {
   color: var(--accent);
 }
 
+/* Online leaderboard: ten rows, tighter than the local table */
+table.board td {
+  padding: calc(var(--s) * 2px) calc(var(--s) * 6px);
+}
+
+/* Screens with a full leaderboard need every pixel of height */
+.menu.tight {
+  padding: calc(var(--s) * 18px) calc(var(--s) * 24px);
+}
+
+.menu.tight h1 {
+  margin-bottom: calc(var(--s) * 6px);
+  font-size: calc(var(--s) * 24px);
+}
+
+.menu.tight table.scores caption {
+  padding-bottom: calc(var(--s) * 4px);
+}
+
+.menu.tight .rankline {
+  margin-top: calc(var(--s) * 4px);
+}
+
+.menu.tight .items {
+  gap: calc(var(--s) * 6px);
+}
+
+.menu.tight .item {
+  padding: calc(var(--s) * 6px) calc(var(--s) * 14px);
+}
+
+.menu.tight .extra {
+  margin: calc(var(--s) * 10px) 0;
+}
+
+.menu.tight .footer {
+  margin-top: calc(var(--s) * 8px);
+}
+
+table.board th {
+  padding: 0 calc(var(--s) * 6px) calc(var(--s) * 3px);
+  color: var(--dim);
+  font-size: calc(var(--s) * 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: left;
+}
+
+table.board th:last-child,
+table.board .sub {
+  text-align: right;
+}
+
+table.board td.sub {
+  width: 3.5em;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.rankline {
+  margin: calc(var(--s) * 8px) 0 0;
+  min-height: 1.5em;
+  text-align: center;
+  color: var(--dim);
+  font-size: calc(var(--s) * 13px);
+  font-weight: 700;
+}
+
+.rankline.warn {
+  margin: 0 0 calc(var(--s) * 10px);
+  color: var(--danger, #ff5c7a);
+}
+
+.menu.results .stats {
+  margin-bottom: calc(var(--s) * 4px);
+}
+
+.menu.results .stats b {
+  font-size: calc(var(--s) * 20px);
+}
+
+.hint {
+  margin: calc(var(--s) * 6px) 0 0;
+  color: var(--dim);
+  font-size: calc(var(--s) * 11px);
+}
+
+.namefield.bad input {
+  border-color: #ff5c7a;
+}
+
+.namefield.bad + .hint {
+  color: #ff5c7a;
+}
+
 .stats {
   display: flex;
   justify-content: space-around;
@@ -399,8 +495,8 @@ table.scores tr.me td {
   font: inherit;
   font-size: calc(var(--s) * 20px);
   font-weight: 700;
-  text-transform: none;
-  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--text);
   background: rgba(255, 255, 255, 0.06);
   border: 1.5px solid var(--line);
