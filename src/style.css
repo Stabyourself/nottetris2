@@ -126,6 +126,20 @@ body {
   width: min(92%, calc(var(--s) * 320px));
 }
 
+/* Top-aligned instead of centred (3% = the gap a full-height panel has), so the buttons stay put
+   however long the text under them is */
+.menu.pinned {
+  align-self: flex-start;
+  position: relative;
+  top: 3%;
+}
+
+/* Retro's title screen is taller, which puts Play a little lower */
+:root[data-theme='retro'] .menu.pinned {
+  top: calc(3% + var(--s) * 20px);
+  max-height: calc(94% - var(--s) * 20px);
+}
+
 .menu h1 {
   margin: 0 0 calc(var(--s) * 14px);
   font-size: calc(var(--s) * 28px);
