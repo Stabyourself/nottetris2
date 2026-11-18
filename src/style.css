@@ -646,10 +646,10 @@ table.board td.sub {
   color: var(--text);
 }
 
-/* App version, small in the bottom-right corner of the screen */
+/* App version, small in the bottom-left corner of the screen */
 #version {
   position: fixed;
-  right: calc(8px + env(safe-area-inset-right));
+  left: calc(8px + env(safe-area-inset-left));
   bottom: calc(6px + env(safe-area-inset-bottom));
   font-size: 10px;
   font-variant-numeric: tabular-nums;
