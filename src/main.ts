@@ -113,8 +113,9 @@ window.addEventListener('resize', fit);
 
 // ------------------------------------------------------------------ music
 
-function startMusic() {
-  if (settings.track >= 0) audio.playTrack(settings.track);
+/** Plays the chosen track. Moving between menus keeps it going; `restart` starts it over. */
+function startMusic(restart = false) {
+  if (settings.track >= 0) audio.playTrack(settings.track, restart);
   else audio.stopMusic();
 }
 
@@ -123,7 +124,7 @@ function startMusic() {
 function showTitle() {
   state = 'title';
   game = null;
-  audio.stopMusic();
+  startMusic();
   setLayout(SINGLE_W);
   updateTouch();
   menu.show({
@@ -375,7 +376,7 @@ function startGame() {
   } else {
     game = new SingleGame(settings.mode, onSingleOver);
     game.start();
-    startMusic();
+    startMusic(true);
   }
   setLayout(game.width);
   state = 'game';

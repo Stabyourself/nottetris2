@@ -90,6 +90,8 @@ export class AudioEngine {
       this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const d = this.noiseBuf.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      // A track asked for before the first gesture (the title menu) starts now.
+      if (this.track) this.startScheduler();
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume();
   }
@@ -204,10 +206,15 @@ export class AudioEngine {
 
   // ---------------------------------------------------------------- music
 
-  playTrack(index: number) {
-    this.stopMusic();
+  /**
+   * Plays a track from the start. A track that is already playing keeps going unless `restart`
+   * is set. Before `unlock()` the track is only remembered, and starts once audio is unlocked.
+   */
+  playTrack(index: number, restart = false) {
     const track = TRACKS[index];
-    if (!track || !this.ctx) return;
+    if (!restart && track && track === this.track && this.timer !== null) return;
+    this.stopMusic();
+    if (!track) return;
     this.track = track;
     const lead = new Map<number, [number, number]>();
     let s = 0;
@@ -219,8 +226,7 @@ export class AudioEngine {
     }
     this.events = { lead, total: track.roots.length * 8 };
     this.step = 0;
-    this.nextTime = this.ctx.currentTime + 0.1;
-    this.timer = window.setInterval(() => this.schedule(), 25);
+    if (this.ctx) this.startScheduler();
   }
 
   stopMusic() {
@@ -236,6 +242,11 @@ export class AudioEngine {
 
   resumeMusic() {
     if (!this.track || !this.ctx || this.timer !== null) return;
+    this.startScheduler();
+  }
+
+  private startScheduler() {
+    if (!this.ctx) return;
     this.nextTime = this.ctx.currentTime + 0.1;
     this.timer = window.setInterval(() => this.schedule(), 25);
   }
