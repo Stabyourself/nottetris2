@@ -3,13 +3,13 @@ import type { Controls } from './field';
 type Action = keyof Controls;
 type KeyMap = Record<Action, string[]>;
 
-// Rotation is on Z / X only; Up does nothing during play.
+// Rotation is on Z / X, or J / K to pair with WASD; Up does nothing during play.
 export const KEYS_SINGLE: KeyMap = {
   left: ['ArrowLeft', 'KeyA'],
   right: ['ArrowRight', 'KeyD'],
   down: ['ArrowDown', 'KeyS'],
-  rotL: ['KeyZ'],
-  rotR: ['KeyX'],
+  rotL: ['KeyZ', 'KeyJ'],
+  rotR: ['KeyX', 'KeyK'],
 };
 
 export const KEYS_P1: KeyMap = {

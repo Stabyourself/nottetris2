@@ -167,8 +167,8 @@ The itch page's cover, screenshots and gameplay GIF are in `itch/screenshots/`.
 | ------------- | --------------------- | --------- | ------------------- |
 | Move          | ← → or A D            | A D       | J L or ← →          |
 | Push down     | ↓ or S                | S         | K or ↓              |
-| Rotate left   | Z                     | Q         | U or ,              |
-| Rotate right  | X                     | E         | O or .              |
+| Rotate left   | Z or J                | Q         | U or ,              |
+| Rotate right  | X or K                | E         | O or .              |
 
 Hotkeys (all modes):
 
