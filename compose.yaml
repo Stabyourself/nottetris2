@@ -1,7 +1,7 @@
 # Production: copy to /opt/docker/slicefall on the server, next to deploy.sh and .env
 services:
   slicefall:
-    image: ghcr.io/gdainti/nottetris2-web:${TAG:-latest}
+    image: ghcr.io/gdainti/slicefall:${TAG:-latest}
     container_name: slicefall
     restart: unless-stopped
     env_file: .env
