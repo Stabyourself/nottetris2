@@ -26,6 +26,11 @@ interface Shade {
 }
 const SHADES: Shade[] = PIECE_BASE.map((hex) => ({ dark: mix(hex, '#000000', 0.45), base: hex, light: mix(hex, '#ffffff', 0.35) }));
 
+/** Colours of one piece kind (index into PIECE_NAMES), e.g. for the logo. */
+export function pieceShade(kind: number): Readonly<Shade> {
+  return SHADES[kind];
+}
+
 function mix(a: string, b: string, t: number): string {
   const pa = parseInt(a.slice(1), 16);
   const pb = parseInt(b.slice(1), 16);
