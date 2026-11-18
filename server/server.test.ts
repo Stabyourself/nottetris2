@@ -209,7 +209,11 @@ describe('http', () => {
     assert.equal(page.status, 200);
     assert.match(page.headers.get('content-type')!, /text\/html/);
     assert.equal(page.headers.get('cache-control'), 'no-cache');
-    assert.ok(page.headers.get('content-security-policy'));
+    // Framable only by itch.io (itch/index.html), nowhere else
+    assert.match(
+      page.headers.get('content-security-policy')!,
+      /frame-ancestors https:\/\/itch\.io https:\/\/\*\.itch\.io https:\/\/\*\.itch\.zone(;|$)/,
+    );
 
     const js = await fetch(`${base}/assets/app-abc123.js`);
     assert.equal(js.status, 200);

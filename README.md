@@ -135,6 +135,23 @@ To take a consistent copy of the database while it is running:
 docker exec slicefall node server/admin.ts backup /data/backup.db
 ```
 
+### itch.io
+
+The itch.io page doesn't host a copy of the game. [`itch/index.html`](itch/index.html) is a page
+with one full-size iframe of https://slicefall.gdainti.com, so itch always shows the deployed
+version and the online leaderboard works. The server's `frame-ancestors` lets only itch.io's
+domains frame the game.
+
+To make the upload (`index.html` must sit at the root of the zip):
+
+```sh
+cd itch && zip -X slicefall-itch.zip index.html
+```
+
+On itch.io: Kind of project **HTML**, upload the zip and tick **This file will be played in the
+browser**. Embed options: viewport **940 × 640**, **Mobile friendly** and **Fullscreen button** on.
+Only re-upload when `itch/index.html` changes; game updates reach itch with each deploy.
+
 ## Modes
 
 | Mode   | Original | Rules |

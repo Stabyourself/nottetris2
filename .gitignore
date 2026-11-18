@@ -12,3 +12,6 @@ data/
 *.db
 *.db-shm
 *.db-wal
+
+# itch.io upload, built from itch/index.html
+itch/*.zip
