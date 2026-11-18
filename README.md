@@ -152,6 +152,10 @@ On itch.io: Kind of project **HTML**, upload the zip and tick **This file will b
 browser**. Embed options: viewport **940 × 640**, **Mobile friendly** and **Fullscreen button** on.
 Only re-upload when `itch/index.html` changes; game updates reach itch with each deploy.
 
+The page's text, tags and settings are in [`itch/page.md`](itch/page.md) (and as rich text to paste
+into itch's editor in `itch/description.html`); the cover, screenshots and gameplay GIF are in
+`itch/screenshots/`.
+
 ## Modes
 
 | Mode   | Original | Rules |
