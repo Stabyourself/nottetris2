@@ -41,5 +41,8 @@ export const LOSING_Y = 0; // landing with the piece centre above this line ends
 export const FALLOUT_Y = 648; // game over screen once every piece has dropped below this
 
 export const STEP = 1 / 60;
-export const VELOCITY_ITERATIONS = 10;
-export const POSITION_ITERATIONS = 10;
+// The original passes 10/10 to LÖVE's Box2D. planck.js needs more to hold up a tall pile of small
+// cut fragments: at 10/10 heavy pieces sink into the crumbs below them (up to 60 px) and then shove
+// everything apart, so the pile starts to jump. 20/20 removed that in every test game.
+export const VELOCITY_ITERATIONS = 20;
+export const POSITION_ITERATIONS = 20;
