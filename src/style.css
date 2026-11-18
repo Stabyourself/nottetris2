@@ -93,7 +93,7 @@ body {
 .menu h1.logo {
   position: relative;
   width: max-content;
-  /* the dropped bottom half hangs 0.075em below the box, into this margin */
+  /* the bottom half hangs 0.03em below the box, into this margin */
   margin: 0 auto calc(var(--s) * 14px);
   font-size: calc(var(--s) * 58px);
   font-weight: 900;
@@ -116,15 +116,17 @@ body {
  * measuring every letter: each piece it leaves is at least a fifth of its letter in Avenir Next,
  * Helvetica Neue and the system font, so no letter keeps a sliver (62%/38% left one on the S).
  */
+/* Like the favicon: the halves slide apart along the cut, top to the left, bottom to the right. */
 .logo-half.top {
   clip-path: polygon(-5% -20%, 105% -20%, 105% 38%, -5% 58%);
+  transform: translateX(-0.08em);
 }
 
 .logo-half.bottom {
   position: absolute;
   inset: 0;
   clip-path: polygon(-5% 64%, 105% 44%, 105% 120%, -5% 120%);
-  transform: translate(0.035em, 0.075em);
+  transform: translate(0.08em, 0.03em);
 }
 
 .menu .sub {
