@@ -19,6 +19,9 @@ import {
 } from './storage';
 import { Menu, esc } from './ui';
 
+/** package.json's version, injected by vite.config.ts. */
+declare const __APP_VERSION__: string;
+
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 const stage = document.getElementById('stage')!;
@@ -26,6 +29,7 @@ const overlay = document.getElementById('overlay')!;
 const touchEl = document.getElementById('touch')!;
 const pauseBtn = document.getElementById('pausebtn') as HTMLButtonElement;
 const toastEl = document.getElementById('toast')!;
+document.getElementById('version')!.textContent = `v${__APP_VERSION__}`;
 
 const settings = loadSettings();
 audio.setVolumes(settings.sfx, settings.music);
