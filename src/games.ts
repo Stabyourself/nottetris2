@@ -42,7 +42,7 @@ export class SingleGame {
   readonly type = 'single';
   readonly field: Field;
   readonly best: number;
-  readonly pauseRect: Rect = { x: 410, y: 520, w: 186, h: 38 };
+  readonly pauseRect: Rect = { x: 410, y: 32, w: 186, h: 38 };
   paused = false;
   /** Seconds of actual play (not paused, not the game-over fall), sent with the score. */
   elapsed = 0;
@@ -88,27 +88,28 @@ export class SingleGame {
     const pw = 186;
     const cx = px + pw / 2;
 
-    card(ctx, px, 32, pw, 290);
-    label(ctx, 'Score', px + 18, 66);
-    value(ctx, String(f.score), px + 18, 104, 34);
+    // The pause button is an HTML element over pauseRect (y 32–70); the cards sit below it.
+    const top = 82;
+    card(ctx, px, top, pw, 290);
+    label(ctx, 'Score', px + 18, top + 34);
+    value(ctx, String(f.score), px + 18, top + 72, 34);
     if (f.addTimer < C.SCORE_POPUP_TIME && !f.isCutting() && f.lastAdd > 0) {
       const t = f.addTimer / C.SCORE_POPUP_TIME;
       ctx.globalAlpha = 1 - t;
-      value(ctx, `+${f.lastAdd}`, px + pw - 16, 66 - t * 14, 18, 'right', COLORS.accent);
+      value(ctx, `+${f.lastAdd}`, px + pw - 16, top + 34 - t * 14, 18, 'right', COLORS.accent);
       ctx.globalAlpha = 1;
     }
-    label(ctx, 'Level', px + 18, 150);
-    value(ctx, String(f.level), px + 18, 186, 30);
-    label(ctx, 'Lines', px + 18, 232);
-    value(ctx, String(f.lines), px + 18, 268, 30);
-    label(ctx, 'Best', px + 18, 300);
-    value(ctx, String(Math.max(this.best, f.score)), px + pw - 18, 300, 16, 'right', COLORS.dim);
+    label(ctx, 'Level', px + 18, top + 118);
+    value(ctx, String(f.level), px + 18, top + 154, 30);
+    label(ctx, 'Lines', px + 18, top + 200);
+    value(ctx, String(f.lines), px + 18, top + 236, 30);
+    label(ctx, 'Best', px + 18, top + 268);
+    value(ctx, String(Math.max(this.best, f.score)), px + pw - 18, top + 268, 16, 'right', COLORS.dim);
 
-    card(ctx, px, 338, pw, 170);
-    label(ctx, 'Next', px + 18, 368);
-    if (!this.paused) drawPreview(ctx, f.nextKind, cx, 438, f.nextSpin, 0.78);
+    card(ctx, px, top + 306, pw, 170);
+    label(ctx, 'Next', px + 18, top + 336);
+    if (!this.paused) drawPreview(ctx, f.nextKind, cx, top + 406, f.nextSpin, 0.78);
 
-    // The pause button itself is an HTML element over pauseRect; key hints go under it.
     ctx.fillStyle = COLORS.dim;
     ctx.font = `600 12px ${FONT}`;
     ctx.textAlign = 'left';
@@ -130,7 +131,7 @@ export class VersusGame {
   static wins: [number, number] = [0, 0];
 
   readonly fields: [Field, Field];
-  readonly pauseRect: Rect = { x: 406, y: 516, w: 168, h: 36 };
+  readonly pauseRect: Rect = { x: 406, y: 32, w: 168, h: 36 };
   phase: VersusPhase = 'countdown';
   paused = false;
   winner: 0 | 1 | 2 = 2; // 2 = draw
@@ -238,18 +239,20 @@ export class VersusGame {
     const px = 406;
     const pw = 168;
     const cx = px + pw / 2;
+    // The pause button is an HTML element over pauseRect (y 32–68); the cards sit below it.
+    const top = 80;
     for (let i = 0; i < 2; i++) {
       const f = this.fields[i];
-      const y = 32 + i * 200;
+      const y = top + i * 200;
       card(ctx, px, y, pw, 184);
       label(ctx, `Player ${i + 1}`, cx, y + 30, 'center');
       value(ctx, String(f.score), cx, y + 76, 40, 'center');
       label(ctx, 'score', cx, y + 96, 'center');
       if (!this.paused && this.phase !== 'countdown') drawPreview(ctx, f.nextKind, cx, y + 140, f.nextSpin, 0.55);
     }
-    card(ctx, px, 432, pw, 72);
-    label(ctx, 'Wins', cx, 458, 'center');
-    value(ctx, `${VersusGame.wins[0]}  –  ${VersusGame.wins[1]}`, cx, 492, 26, 'center');
+    card(ctx, px, top + 400, pw, 72);
+    label(ctx, 'Wins', cx, top + 426, 'center');
+    value(ctx, `${VersusGame.wins[0]}  –  ${VersusGame.wins[1]}`, cx, top + 460, 26, 'center');
 
     ctx.fillStyle = COLORS.dim;
     ctx.font = `600 11px ${FONT}`;
