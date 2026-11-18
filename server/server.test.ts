@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { after, before, describe, test } from 'node:test';
 import { gunzipSync } from 'node:zlib';
 import { createApp, rateKey } from './app.ts';
@@ -39,20 +40,19 @@ describe('names', () => {
 describe('validate', () => {
   test('accepts real-looking results', () => {
     assert.ok(validate(cut()).ok);
-    assert.ok(validate({ ...cut(), mode: 'stack', score: 2300, pieces: 23, lines: 0, level: 0 }).ok);
     assert.ok(validate(cut({ lines: 25, level: 2, score: 6000, pieces: 60, durationMs: 400_000 })).ok);
   });
 
   test('rejects impossible results', () => {
     const cases: [string, unknown][] = [
       ['mode', { ...cut(), mode: 'versus' }],
+      ['stack is gone', { ...cut(), mode: 'stack', score: 2300, pieces: 23, lines: 0, level: 0 }],
       ['zero score', cut({ score: 0 })],
       ['fractional score', cut({ score: 10.5 })],
       ['level not lines/10', cut({ lines: 12, level: 0 })],
       ['too many points per row', cut({ lines: 2, score: 5000, pieces: 10 })],
       ['too few pieces for the rows', cut({ lines: 10, level: 1, score: 2000, pieces: 15 })],
       ['too fast', cut({ durationMs: 1000 })],
-      ['stack score not pieces x 100', { ...cut(), mode: 'stack', score: 2350, pieces: 23, lines: 0, level: 0 }],
       ['not an object', 'hello'],
     ];
     for (const [why, body] of cases) assert.equal(validate(body).ok, false, why);
@@ -78,7 +78,6 @@ describe('boards', () => {
     db.add(cut({ name: 'BOB', score: 400 }), thisWeek);
     db.add(cut({ name: 'BOB', score: 350 }), thisWeek);
     db.add(cut({ name: 'CY', score: 400 }), new Date(thisWeek.getTime() + 1000));
-    db.add({ ...cut({ name: 'DEE' }), mode: 'stack', score: 9900, pieces: 99, lines: 0 }, thisWeek);
   });
 
   test('all time: one row per player, their best, ties to whoever was first', () => {
@@ -104,11 +103,7 @@ describe('boards', () => {
     );
   });
 
-  test('modes are separate and the limit applies', () => {
-    assert.deepEqual(
-      db.board('stack', null, 10).map((e) => e.name),
-      ['DEE'],
-    );
+  test('the limit applies', () => {
     assert.equal(db.board('cut', null, 2).length, 2);
   });
 
@@ -128,6 +123,46 @@ interface Boards {
   week: { name: string; score: number }[];
   allTime: { name: string; score: number }[];
 }
+
+test('migrating an old database drops Stack scores and keeps Cut ones', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'nt2-migrate-'));
+  try {
+    const file = join(dir, 'scores.db');
+    // The schema as it shipped with Stack, at user_version 1
+    const old = new DatabaseSync(file);
+    old.exec(`CREATE TABLE score (
+        id INTEGER PRIMARY KEY, mode TEXT NOT NULL CHECK (mode IN ('cut', 'stack')), name TEXT NOT NULL,
+        score INTEGER NOT NULL, lines INTEGER NOT NULL, level INTEGER NOT NULL, pieces INTEGER NOT NULL,
+        duration_ms INTEGER NOT NULL, created_at INTEGER NOT NULL);
+      INSERT INTO score VALUES (1, 'cut', 'ANN', 500, 4, 0, 12, 60000, 1);
+      INSERT INTO score VALUES (2, 'stack', 'BOB', 2300, 0, 0, 23, 60000, 2);
+      INSERT INTO score VALUES (3, 'cut', 'CY', 300, 3, 0, 9, 60000, 3);
+      PRAGMA user_version = 1;`);
+    old.close();
+
+    const db = new ScoreDb(file);
+    try {
+      assert.deepEqual(
+        db.recent(10).map((r) => [r.id, r.mode, r.name]),
+        [
+          [3, 'cut', 'CY'],
+          [1, 'cut', 'ANN'],
+        ],
+      );
+      assert.throws(() => db.sql.exec(`INSERT INTO score VALUES (4, 'stack', 'DEE', 100, 0, 0, 1, 1000, 4)`), /CHECK/);
+      const indexes = db.sql.prepare(`SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'score' ORDER BY name`).all();
+      assert.deepEqual(
+        indexes.map((r) => r.name),
+        ['score_by_mode_name', 'score_by_mode_score', 'score_by_mode_time'],
+      );
+      assert.equal(db.add(cut({ name: 'EVE' }), new Date(5)), 4); // ids carry on
+    } finally {
+      db.close();
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 describe('http', () => {
   const dir = mkdtempSync(join(tmpdir(), 'slicefall-test-'));
@@ -209,8 +244,7 @@ describe('http', () => {
 
     const board = (await (await fetch(`${base}/api/leaderboard?mode=cut`)).json()) as Boards;
     assert.equal(board.week[0].name, 'ZED');
-    const stack = (await (await fetch(`${base}/api/leaderboard?mode=stack`)).json()) as Boards;
-    assert.deepEqual(stack.week, []);
+    assert.equal((await fetch(`${base}/api/leaderboard?mode=stack`)).status, 400);
   });
 
   test('bad requests are refused', async () => {

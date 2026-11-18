@@ -8,7 +8,7 @@ import { randomKind } from './pieces';
  * towards the lowest part of the stack, keeping it roughly axis-aligned.
  */
 export class Demo {
-  field = new Field({ mode: 'cut', pickKind: randomKind });
+  field = new Field({ pickKind: randomKind });
   private target: { x: number; angle: number } | null = null;
   private piece: unknown = null;
 
@@ -20,7 +20,7 @@ export class Demo {
     const f = this.field;
     if (f.state === 'toppedOut') f.startFallout();
     if (f.state === 'over') {
-      this.field = new Field({ mode: 'cut', pickKind: randomKind });
+      this.field = new Field({ pickKind: randomKind });
       this.field.start();
       return;
     }

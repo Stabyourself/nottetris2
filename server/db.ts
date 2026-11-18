@@ -33,6 +33,28 @@ const MIGRATIONS = [
    CREATE INDEX score_by_mode_score ON score (mode, score DESC);
    CREATE INDEX score_by_mode_time  ON score (mode, created_at);
    CREATE INDEX score_by_mode_name  ON score (mode, name, score DESC);`,
+
+  // Stack mode was removed: drop its scores and only allow Cut. SQLite can't change a CHECK in
+  // place, so the table is rebuilt (dropping it also drops its indexes, which are made again).
+  `DELETE FROM score WHERE mode <> 'cut';
+   CREATE TABLE score_new (
+     id          INTEGER PRIMARY KEY,
+     mode        TEXT    NOT NULL CHECK (mode IN ('cut')),
+     name        TEXT    NOT NULL,
+     score       INTEGER NOT NULL,
+     lines       INTEGER NOT NULL,
+     level       INTEGER NOT NULL,
+     pieces      INTEGER NOT NULL,
+     duration_ms INTEGER NOT NULL,
+     created_at  INTEGER NOT NULL -- unix ms
+   );
+   INSERT INTO score_new (id, mode, name, score, lines, level, pieces, duration_ms, created_at)
+     SELECT id, mode, name, score, lines, level, pieces, duration_ms, created_at FROM score;
+   DROP TABLE score;
+   ALTER TABLE score_new RENAME TO score;
+   CREATE INDEX score_by_mode_score ON score (mode, score DESC);
+   CREATE INDEX score_by_mode_time  ON score (mode, created_at);
+   CREATE INDEX score_by_mode_name  ON score (mode, name, score DESC);`,
 ];
 
 export class ScoreDb {

@@ -17,9 +17,6 @@ import {
 } from './geometry';
 import { PIECE_SHAPES } from './pieces';
 
-/** 'cut' = game A (rows are sliced out by area), 'stack' = game B (no clearing, count pieces). */
-export type FieldMode = 'cut' | 'stack';
-
 export interface Controls {
   left: boolean;
   right: boolean;
@@ -56,7 +53,6 @@ interface FixtureTag {
 }
 
 interface FieldOptions {
-  mode: FieldMode;
   pickKind: () => number;
   emit?: (e: FieldEvent) => void;
 }
@@ -65,7 +61,6 @@ const PX = C.PX_PER_M;
 const v2 = (x: number, y: number) => Vec2(x / PX, y / PX);
 
 export class Field {
-  readonly mode: FieldMode;
   /** Inner edges of the side walls, in physics pixels. */
   readonly left: number;
   readonly right: number;
@@ -101,10 +96,9 @@ export class Field {
   private emit: (e: FieldEvent) => void;
 
   constructor(opts: FieldOptions) {
-    this.mode = opts.mode;
     this.pickKind = opts.pickKind;
     this.emit = opts.emit ?? (() => {});
-    this.left = this.mode === 'cut' ? 56 : 64;
+    this.left = 56;
     this.right = 384;
     this.nextKind = this.pickKind();
 
@@ -244,7 +238,7 @@ export class Field {
     if (this.landed && this.state === 'playing' && this.active) this.endBlock();
 
     // endBlock() may have just switched to 'cutting' (TS can't see that through the call).
-    if (this.mode === 'cut' && (this.state as FieldState) !== 'cutting') {
+    if ((this.state as FieldState) !== 'cutting') {
       this.densityTimer += dt;
       if (this.densityTimer >= C.DENSITY_INTERVAL) {
         this.densityTimer %= C.DENSITY_INTERVAL;
@@ -274,9 +268,8 @@ export class Field {
 
     const vel = body.getLinearVelocity();
     const vy = vel.y * PX;
-    const maxDrop = this.mode === 'cut' ? C.MAX_DROP_SPEED : this.speed * 5;
     if (k.down) {
-      if (vy > maxDrop) body.setLinearVelocity(Vec2(vel.x, maxDrop / PX));
+      if (vy > C.MAX_DROP_SPEED) body.setLinearVelocity(Vec2(vel.x, C.MAX_DROP_SPEED / PX));
       else body.applyForce(Vec2(0, C.DOWN_FORCE), centre, true);
     } else if (vy > this.speed) {
       body.setLinearVelocity(Vec2(vel.x, (vy - C.FALL_BRAKE * dt) / PX));
@@ -295,12 +288,7 @@ export class Field {
     }
 
     this.placed++;
-    if (this.mode === 'stack') {
-      this.score = this.placed * 100;
-      this.emit('land');
-    } else {
-      this.checkRows();
-    }
+    this.checkRows();
     this.spawn();
   }
 

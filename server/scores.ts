@@ -3,7 +3,8 @@
 // Players are identified by name only, like an arcade cabinet: the same name is the same player.
 // Names are stored upper-cased, so "ann" and "ANN" are one player.
 
-export const MODES = ['cut', 'stack'] as const;
+/** Cut is the only scored game for now; the mode field stays so others can be added back. */
+export const MODES = ['cut'] as const;
 export type Mode = (typeof MODES)[number];
 
 export const NAME_MAX = 10;
@@ -36,7 +37,6 @@ const isInt = (v: unknown, min: number, max: number): v is number =>
  * Checks a submission against what the game can actually produce. This stops typos and the
  * laziest fakes, not a determined cheat: the browser is trusted with the numbers.
  *
- * - Stack: 100 points per piece, no rows.
  * - Cut: the level is lines / 10. A cut of n rows pays ceil((3n)^(avg^10)·20 + 40n²) where avg is
  *   how full the rows were (0.81–1). Even 18 rows at once stays under 1000 per row.
  *   Every cut row took at least 8 blocks, and a piece is 4 blocks, so pieces ≥ 2 × lines.
@@ -46,7 +46,7 @@ export function validate(body: unknown): { ok: true; value: Submission } | { ok:
   if (!body || typeof body !== 'object') return { ok: false, error: 'expected a JSON object' };
   const b = body as Record<string, unknown>;
 
-  if (!MODES.includes(b.mode as Mode)) return { ok: false, error: 'mode must be "cut" or "stack"' };
+  if (!MODES.includes(b.mode as Mode)) return { ok: false, error: 'mode must be "cut"' };
   const mode = b.mode as Mode;
   const name = normalizeName(b.name);
   if (!name) return { ok: false, error: `name: 1–${NAME_MAX} letters, digits, spaces or . - _ ! ? '` };
@@ -58,12 +58,8 @@ export function validate(body: unknown): { ok: true; value: Submission } | { ok:
   }
   if (!isInt(durationMs, 0, 24 * 3600 * 1000)) return { ok: false, error: 'durationMs out of range' };
 
-  if (mode === 'stack') {
-    if (lines !== 0 || level !== 0 || score !== pieces * 100) return { ok: false, error: 'not a possible Stack result' };
-  } else {
-    if (level !== Math.floor(lines / 10)) return { ok: false, error: 'level does not match lines' };
-    if (lines === 0 || score > lines * 1000 || pieces < lines * 2) return { ok: false, error: 'not a possible Cut result' };
-  }
+  if (level !== Math.floor(lines / 10)) return { ok: false, error: 'level does not match lines' };
+  if (lines === 0 || score > lines * 1000 || pieces < lines * 2) return { ok: false, error: 'not a possible Cut result' };
   if (durationMs < pieces * 200) return { ok: false, error: 'game too short for that many pieces' };
 
   return { ok: true, value: { mode, name, score, lines, level, pieces, durationMs } };

@@ -175,7 +175,7 @@ export function createApp(opts: AppOptions): Server {
     if (path === '/api/leaderboard') {
       if (!read) return json(res, 405, { error: 'method not allowed' });
       const mode = url.searchParams.get('mode') as Mode;
-      if (!MODES.includes(mode)) return json(res, 400, { error: 'mode must be "cut" or "stack"' });
+      if (!MODES.includes(mode)) return json(res, 400, { error: 'mode must be "cut"' });
       return json(res, 200, boards(mode));
     }
 

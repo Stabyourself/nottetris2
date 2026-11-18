@@ -9,7 +9,6 @@ import { COLORS, drawBackground, drawField, setTheme } from './render';
 import { type Boards, fetchBoards, NAME_MAX, normalizeName, submitScore, type Submitted } from './api';
 import {
   type GameMode,
-  type ScoredMode,
   type ThemeName,
   addHighScore,
   highScores,
@@ -41,8 +40,8 @@ let logicalW = SINGLE_W;
 let scale = 1;
 let cssScale = 1;
 
-const MODES: GameMode[] = ['cut', 'stack', 'versus'];
-const MODE_NAMES: Record<GameMode, string> = { cut: 'Cut', stack: 'Stack', versus: 'Versus' };
+const MODES: GameMode[] = ['cut', 'versus'];
+const MODE_NAMES: Record<GameMode, string> = { cut: 'Cut', versus: 'Versus' };
 const THEMES: ThemeName[] = ['modern', 'retro'];
 const THEME_NAMES: Record<ThemeName, string> = { modern: 'Modern', retro: 'Retro' };
 const isCoarse = window.matchMedia('(pointer: coarse)').matches;
@@ -159,20 +158,19 @@ function showTitle() {
 function modeInfo(mode: GameMode): string {
   const text: Record<GameMode, string> = {
     cut: 'Endless. A row is sliced out when it holds 8.1 blocks’ worth of area, cutting right through the pieces. Tighter rows score more. Every 10 rows the pieces fall faster.',
-    stack: 'No clearing at all. Pile up as many pieces as you can before the stack reaches the top.',
-    versus: 'Two players, one keyboard (or two gamepads). Same pieces, mirrored for player 1. Whoever stacks more pieces before topping out wins.',
+    versus: 'Two players, one keyboard (or two gamepads). Same pieces, mirrored for player 1, and rows are cut as in Cut. Once both have topped out, the higher score wins.',
   };
   let out = `<p class="info">${text[mode]}</p>`;
   if (mode === 'versus') {
     out += `<div class="keys"><div><b>Player 1</b>A D move · S down · Q E rotate</div><div><b>Player 2</b>J L move · K down · U O rotate<br><span>or ← → ↓ and , .</span></div></div>`;
   } else {
-    out += scoreTable(mode, -1);
+    out += scoreTable(-1);
   }
   return out;
 }
 
-function scoreTable(mode: 'cut' | 'stack', highlight: number): string {
-  const rows = highScores(mode);
+function scoreTable(highlight: number): string {
+  const rows = highScores();
   const lines: string[] = [];
   for (let i = 0; i < TABLE_SIZE; i++) {
     const r = rows[i];
@@ -180,7 +178,7 @@ function scoreTable(mode: 'cut' | 'stack', highlight: number): string {
       `<tr class="${i === highlight ? 'me' : ''}"><td>${i + 1}</td><td>${r ? esc(r.name) : '—'}</td><td>${r ? r.score : ''}</td></tr>`,
     );
   }
-  return `<table class="scores"><caption>Your best on this device · ${MODE_NAMES[mode]}</caption>${lines.join('')}</table>`;
+  return `<table class="scores"><caption>Your best on this device</caption>${lines.join('')}</table>`;
 }
 
 // ------------------------------------------------------------------ online leaderboard
@@ -190,7 +188,6 @@ type Period = 'week' | 'allTime';
 
 /** What a leaderboard panel shows. Screens keep one and re-render as data arrives. */
 interface BoardView {
-  mode: ScoredMode;
   period: Period;
   data: Boards | null;
   status: 'loading' | 'ok' | 'offline';
@@ -202,17 +199,15 @@ interface BoardView {
   localRank: number;
 }
 
-function boardView(mode: ScoredMode, localRank = -1): BoardView {
-  return { mode, period: 'week', data: null, status: 'loading', me: normalizeName(settings.name), ranks: null, localRank };
+function boardView(localRank = -1): BoardView {
+  return { period: 'week', data: null, status: 'loading', me: normalizeName(settings.name), ranks: null, localRank };
 }
 
 function loadBoards(view: BoardView, request: Promise<Boards | Submitted>) {
   const screen = menu.current;
-  const mode = view.mode;
   view.status = 'loading';
   request
     .then((data) => {
-      if (view.mode !== mode) return; // the player switched modes meanwhile
       view.data = data;
       view.status = 'ok';
       if ('weekRank' in data) {
@@ -221,7 +216,7 @@ function loadBoards(view: BoardView, request: Promise<Boards | Submitted>) {
       }
     })
     .catch(() => {
-      if (view.mode === mode) view.status = 'offline';
+      view.status = 'offline';
     })
     .finally(() => {
       if (menu.current === screen) menu.refresh();
@@ -229,10 +224,9 @@ function loadBoards(view: BoardView, request: Promise<Boards | Submitted>) {
 }
 
 function boardHtml(view: BoardView): string {
-  const cut = view.mode === 'cut';
-  const title = `${view.period === 'week' ? 'This week' : 'All time'} · ${MODE_NAMES[view.mode]}`;
+  const title = view.period === 'week' ? 'This week' : 'All time';
   if (view.status === 'offline') {
-    return `<p class="rankline warn">The online leaderboard can’t be reached right now.</p>${scoreTable(view.mode, view.localRank)}`;
+    return `<p class="rankline warn">The online leaderboard can’t be reached right now.</p>${scoreTable(view.localRank)}`;
   }
   const entries = view.status === 'ok' && view.data ? view.data[view.period] : [];
   const rows: string[] = [];
@@ -241,11 +235,11 @@ function boardHtml(view: BoardView): string {
     const me = e && e.name === view.me ? ' class="me"' : '';
     rows.push(
       e
-        ? `<tr${me}><td>${e.rank}</td><td>${esc(e.name)}</td>${cut ? `<td class="sub">${e.lines}</td>` : ''}<td>${e.score}</td></tr>`
-        : `<tr><td>${i + 1}</td><td>—</td>${cut ? '<td class="sub"></td>' : ''}<td></td></tr>`,
+        ? `<tr${me}><td>${e.rank}</td><td>${esc(e.name)}</td><td class="sub">${e.lines}</td><td>${e.score}</td></tr>`
+        : `<tr><td>${i + 1}</td><td>—</td><td class="sub"></td><td></td></tr>`,
     );
   }
-  const head = `<tr class="head"><th>#</th><th>Name</th>${cut ? '<th class="sub">Lines</th>' : ''}<th>Score</th></tr>`;
+  const head = '<tr class="head"><th>#</th><th>Name</th><th class="sub">Lines</th><th>Score</th></tr>';
 
   let line = '&nbsp;';
   if (view.status === 'loading') line = 'Loading…';
@@ -270,23 +264,11 @@ function periodChoice(view: BoardView) {
 
 function showLeaderboard() {
   state = 'menu';
-  const view = boardView(settings.mode === 'stack' ? 'stack' : 'cut');
-  const modes: ScoredMode[] = ['cut', 'stack'];
+  const view = boardView();
   menu.show({
     title: 'Leaderboard',
     className: 'tight',
     items: [
-      {
-        type: 'choice',
-        label: 'Mode',
-        options: modes.map((m) => MODE_NAMES[m]),
-        get: () => modes.indexOf(view.mode),
-        set: (i) => {
-          view.mode = modes[i];
-          view.data = null;
-          loadBoards(view, fetchBoards(view.mode));
-        },
-      },
       periodChoice(view),
       { type: 'button', label: 'Back', keyLabel: 'Esc', action: showTitle },
     ],
@@ -294,7 +276,7 @@ function showLeaderboard() {
     footer: 'Best score per name · weeks start Monday 00:00 UTC',
     onBack: showTitle,
   });
-  loadBoards(view, fetchBoards(view.mode));
+  loadBoards(view, fetchBoards());
 }
 
 function showModeSelect() {
@@ -400,7 +382,7 @@ function startGame() {
     audio.stopMusic();
     game = new VersusGame(startMusic, showVersusResults);
   } else {
-    game = new SingleGame(settings.mode, onSingleOver);
+    game = new SingleGame(onSingleOver);
     game.start();
     startMusic(true);
   }
@@ -446,17 +428,17 @@ function resume() {
   updateTouch();
 }
 
-/** Game over in Cut/Stack: ask for a name, then show where the score landed. */
+/** Game over in Cut: ask for a name, then show where the score landed. */
 function onSingleOver() {
   const g = game as SingleGame;
   state = 'gameover';
   updateTouch();
   const f = g.field;
   if (f.score <= 0) {
-    showGameOver(g, fetchBoards(g.mode), -1);
+    showGameOver(g, fetchBoards(), -1);
     return;
   }
-  const personalBest = qualifies(g.mode, f.score);
+  const personalBest = qualifies(f.score);
   if (personalBest) audio.play('highscore');
 
   const submit = () => {
@@ -470,9 +452,8 @@ function onSingleOver() {
     }
     settings.name = name;
     saveSettings(settings);
-    const localRank = personalBest ? addHighScore(g.mode, { name, score: f.score }) : -1;
+    const localRank = personalBest ? addHighScore({ name, score: f.score }) : -1;
     const request = submitScore({
-      mode: g.mode,
       name,
       score: f.score,
       lines: f.lines,
@@ -482,7 +463,7 @@ function onSingleOver() {
     });
     showGameOver(g, request, localRank);
   };
-  const skip = () => showGameOver(g, fetchBoards(g.mode), -1);
+  const skip = () => showGameOver(g, fetchBoards(), -1);
 
   menu.show({
     title: personalBest ? 'New high score!' : 'Game over',
@@ -517,11 +498,8 @@ function onSingleOver() {
 
 function showGameOver(g: SingleGame, request: Promise<Boards | Submitted>, localRank: number) {
   const f = g.field;
-  const stats =
-    g.mode === 'cut'
-      ? `<div class="stats"><div><span>Score</span><b>${f.score}</b></div><div><span>Level</span><b>${f.level}</b></div><div><span>Lines</span><b>${f.lines}</b></div></div>`
-      : `<div class="stats"><div><span>Score</span><b>${f.score}</b></div><div><span>Pieces</span><b>${f.placed}</b></div></div>`;
-  const view = boardView(g.mode, localRank);
+  const stats = `<div class="stats"><div><span>Score</span><b>${f.score}</b></div><div><span>Level</span><b>${f.level}</b></div><div><span>Lines</span><b>${f.lines}</b></div></div>`;
+  const view = boardView(localRank);
   menu.show({
     title: 'Game over',
     className: 'results tight',
@@ -542,7 +520,7 @@ function showVersusResults() {
   const g = game as VersusGame;
   state = 'results';
   updateTouch();
-  const [a, b] = g.fields.map((f) => f.placed);
+  const [a, b] = g.fields.map((f) => f.score);
   menu.show({
     title: g.winner === 2 ? 'Draw!' : `Player ${g.winner + 1} wins!`,
     className: 'compact',
