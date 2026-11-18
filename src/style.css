@@ -135,9 +135,10 @@ body {
   top: 3%;
 }
 
-/* Its subtitle stands in for the row the Back button used to take, keeping Start under Play */
+/* Its subtitle stands in for the row the Back button used to take, keeping Start under Play.
+   Together with the gap above Start (.item.btn.primary) this must stay 30px. */
 .menu.pinned .sub {
-  margin-bottom: calc(var(--s) * 30px);
+  margin-bottom: calc(var(--s) * 18px);
 }
 
 /* Retro's title screen is taller, which puts Play a little lower */
@@ -335,6 +336,20 @@ body {
 .item.sel {
   border-color: var(--accent);
   background: rgba(var(--glow), 0.1);
+}
+
+/* The screen's main action (Start): filled with the accent and set a little apart from the
+   settings above it, so it doesn't read as one more settings row */
+.item.btn.primary {
+  margin-top: calc(var(--s) * 12px);
+  color: var(--on-accent);
+  background: var(--accent);
+  font-size: calc(var(--s) * 19px);
+  letter-spacing: 0.04em;
+}
+
+.item.btn.primary.sel {
+  box-shadow: 0 0 0 calc(var(--s) * 3px) rgba(var(--glow), 0.35);
 }
 
 .item.choice,

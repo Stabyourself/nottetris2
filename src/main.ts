@@ -314,7 +314,7 @@ function showModeSelect() {
           startMusic();
         },
       },
-      { type: 'button', label: 'Start', action: startGame },
+      { type: 'button', label: 'Start', action: startGame, primary: true },
     ],
     initial: 2,
     html: () => modeInfo(settings.mode),
