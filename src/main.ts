@@ -305,6 +305,7 @@ function showModeSelect() {
   startMusic();
   menu.show({
     title: 'Game type',
+    className: 'pinned',
     items: [
       {
         type: 'choice',
@@ -327,10 +328,11 @@ function showModeSelect() {
           startMusic();
         },
       },
-      { type: 'button', label: 'Start', action: startGame },
+      // Start goes last so it, not Back, ends up under the mouse after clicking Play on the title
       { type: 'button', label: 'Back', action: showTitle },
+      { type: 'button', label: 'Start', action: startGame },
     ],
-    initial: 2,
+    initial: 3,
     html: () => modeInfo(settings.mode),
     onBack: showTitle,
   });

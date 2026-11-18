@@ -126,6 +126,14 @@ body {
   width: min(92%, calc(var(--s) * 320px));
 }
 
+/* Top-aligned instead of centred (3% = the gap a full-height panel has), so the buttons stay put
+   however long the text under them is */
+.menu.pinned {
+  align-self: flex-start;
+  position: relative;
+  top: 3%;
+}
+
 .menu h1 {
   margin: 0 0 calc(var(--s) * 14px);
   font-size: calc(var(--s) * 28px);
