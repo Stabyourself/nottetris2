@@ -1,0 +1,20 @@
+{
+  "name": "nottetris2-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Web port of the Not Tetris 2 gameplay (physics-based falling blocks with area-based row cutting).",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "planck": "1.5.1"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vite": "7.3.8"
+  }
+}

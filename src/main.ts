@@ -1,0 +1,488 @@
+import './style.css';
+import { audio, TRACKS } from './audio';
+import { STEP } from './config';
+import { Demo } from './demo';
+import { H, SINGLE_W, SingleGame, VersusGame } from './games';
+import { clearTouch, pollPadPresses, setTouch, suppressHeldKeys } from './input';
+import { drawBackground, drawField } from './render';
+import { type GameMode, addHighScore, highScores, loadSettings, qualifies, saveSettings, TABLE_SIZE } from './storage';
+import { Menu, esc } from './ui';
+
+const canvas = document.getElementById('game') as HTMLCanvasElement;
+const ctx = canvas.getContext('2d')!;
+const stage = document.getElementById('stage')!;
+const overlay = document.getElementById('overlay')!;
+const touchEl = document.getElementById('touch')!;
+const pauseBtn = document.getElementById('pausebtn') as HTMLButtonElement;
+const toastEl = document.getElementById('toast')!;
+
+const settings = loadSettings();
+audio.setVolumes(settings.sfx, settings.music);
+audio.setMuted(settings.muted);
+const menu = new Menu(overlay, (s) => audio.play(s));
+
+type AppState = 'title' | 'menu' | 'game' | 'paused' | 'gameover' | 'results';
+let state: AppState = 'title';
+let game: SingleGame | VersusGame | null = null;
+let demo = new Demo();
+let logicalW = SINGLE_W;
+let scale = 1;
+let cssScale = 1;
+let lastName = '';
+
+const MODES: GameMode[] = ['cut', 'stack', 'versus'];
+const MODE_NAMES: Record<GameMode, string> = { cut: 'Cut', stack: 'Stack', versus: 'Versus' };
+const isCoarse = window.matchMedia('(pointer: coarse)').matches;
+
+// ------------------------------------------------------------------ layout
+
+function fit() {
+  const touchH = touchEl.hidden ? 0 : touchEl.getBoundingClientRect().height;
+  const availW = window.innerWidth;
+  const availH = window.innerHeight - touchH;
+  const s = Math.max(0.2, Math.min(availW / logicalW, availH / H));
+  const cssW = Math.floor(logicalW * s);
+  const cssH = Math.floor(H * s);
+  const dpr = window.devicePixelRatio || 1;
+  stage.style.width = `${cssW}px`;
+  stage.style.height = `${cssH}px`;
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  scale = canvas.width / logicalW;
+  cssScale = s;
+  stage.style.setProperty('--s', String(Math.max(0.55, s)));
+  updateHud();
+}
+
+/** Shows the HTML pause button over the game's HUD slot while a game is running. */
+function updateHud() {
+  const rect = state === 'game' && game ? game.pauseRect : null;
+  pauseBtn.hidden = !rect;
+  if (!rect) return;
+  pauseBtn.style.left = `${rect.x * cssScale}px`;
+  pauseBtn.style.top = `${rect.y * cssScale}px`;
+  pauseBtn.style.width = `${rect.w * cssScale}px`;
+  pauseBtn.style.height = `${rect.h * cssScale}px`;
+  pauseBtn.style.fontSize = `${14 * cssScale}px`;
+}
+
+let toastTimer = 0;
+function toast(text: string) {
+  toastEl.textContent = text;
+  toastEl.classList.add('show');
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 1100);
+}
+
+function toggleMute() {
+  settings.muted = !settings.muted;
+  audio.setMuted(settings.muted);
+  saveSettings(settings);
+  toast(settings.muted ? 'Sound off' : 'Sound on');
+  menu.refresh();
+}
+
+function setLayout(w: number) {
+  if (w !== logicalW) {
+    logicalW = w;
+    fit();
+  }
+}
+
+function updateTouch() {
+  const show = isCoarse && state === 'game' && game?.type === 'single';
+  if (touchEl.hidden === show) {
+    touchEl.hidden = !show;
+    fit();
+  }
+  if (!show) clearTouch();
+  updateHud();
+}
+
+window.addEventListener('resize', fit);
+
+// ------------------------------------------------------------------ music
+
+function startMusic() {
+  if (settings.track >= 0) audio.playTrack(settings.track);
+  else audio.stopMusic();
+}
+
+// ------------------------------------------------------------------ screens
+
+function showTitle() {
+  state = 'title';
+  game = null;
+  audio.stopMusic();
+  setLayout(SINGLE_W);
+  updateTouch();
+  menu.show({
+    className: 'title',
+    title: 'SLICEFALL',
+    titleClass: 'logo',
+    subtitle: 'Blocks with real physics. Rows get sliced out once they are packed full enough.',
+    items: [
+      { type: 'button', label: 'Play', action: showModeSelect },
+      { type: 'button', label: 'Options', action: () => showOptions(showTitle) },
+    ],
+    footer:
+      'Gameplay ported from <a href="https://github.com/Stabyourself/nottetris2" target="_blank" rel="noopener">Not Tetris 2</a> by Maurice Guégan (MIT).<br>Press F for fullscreen.',
+  });
+}
+
+function modeInfo(mode: GameMode): string {
+  const text: Record<GameMode, string> = {
+    cut: 'Endless. A row is sliced out when it holds 8.1 blocks’ worth of area, cutting right through the pieces. Tighter rows score more. Every 10 rows the pieces fall faster.',
+    stack: 'No clearing at all. Pile up as many pieces as you can before the stack reaches the top.',
+    versus: 'Two players, one keyboard (or two gamepads). Same pieces, mirrored for player 1. Whoever stacks more pieces before topping out wins.',
+  };
+  let out = `<p class="info">${text[mode]}</p>`;
+  if (mode === 'versus') {
+    out += `<div class="keys"><div><b>Player 1</b>A D move · S down · Q E rotate</div><div><b>Player 2</b>J L move · K down · U O rotate<br><span>or ← → ↓ and , .</span></div></div>`;
+  } else {
+    out += scoreTable(mode, -1);
+  }
+  return out;
+}
+
+function scoreTable(mode: 'cut' | 'stack', highlight: number): string {
+  const rows = highScores(mode);
+  const lines: string[] = [];
+  for (let i = 0; i < TABLE_SIZE; i++) {
+    const r = rows[i];
+    lines.push(
+      `<tr class="${i === highlight ? 'me' : ''}"><td>${i + 1}</td><td>${r ? esc(r.name) : '—'}</td><td>${r ? r.score : ''}</td></tr>`,
+    );
+  }
+  return `<table class="scores"><caption>High scores · ${MODE_NAMES[mode]}</caption>${lines.join('')}</table>`;
+}
+
+function showModeSelect() {
+  state = 'menu';
+  game = null;
+  setLayout(SINGLE_W);
+  updateTouch();
+  startMusic();
+  menu.show({
+    title: 'Game type',
+    items: [
+      {
+        type: 'choice',
+        label: 'Mode',
+        options: MODES.map((m) => MODE_NAMES[m]),
+        get: () => MODES.indexOf(settings.mode),
+        set: (i) => {
+          settings.mode = MODES[i];
+          saveSettings(settings);
+        },
+      },
+      {
+        type: 'choice',
+        label: 'Music',
+        options: [...TRACKS.map((t) => t.name), 'Off'],
+        get: () => (settings.track < 0 ? TRACKS.length : settings.track),
+        set: (i) => {
+          settings.track = i >= TRACKS.length ? -1 : i;
+          saveSettings(settings);
+          startMusic();
+        },
+      },
+      { type: 'button', label: 'Start', action: startGame },
+      { type: 'button', label: 'Back', action: showTitle },
+    ],
+    initial: 2,
+    html: () => modeInfo(settings.mode),
+    onBack: showTitle,
+  });
+}
+
+function showOptions(back: () => void) {
+  menu.show({
+    title: 'Options',
+    items: [
+      {
+        type: 'choice',
+        label: 'Audio',
+        options: ['On', 'Muted'],
+        get: () => (settings.muted ? 1 : 0),
+        set: (i) => {
+          settings.muted = i === 1;
+          audio.setMuted(settings.muted);
+          saveSettings(settings);
+        },
+      },
+      {
+        type: 'slider',
+        label: 'Sound',
+        get: () => settings.sfx,
+        set: (v) => {
+          settings.sfx = v;
+          audio.setVolumes(settings.sfx, settings.music);
+          saveSettings(settings);
+        },
+      },
+      {
+        type: 'slider',
+        label: 'Music',
+        get: () => settings.music,
+        set: (v) => {
+          settings.music = v;
+          audio.setVolumes(settings.sfx, settings.music);
+          saveSettings(settings);
+        },
+      },
+      { type: 'button', label: 'Toggle fullscreen', keyLabel: 'F', action: toggleFullscreen },
+      { type: 'button', label: 'Back', keyLabel: 'Esc', action: back },
+    ],
+    footer: 'M mutes sound at any time.',
+    onBack: back,
+  });
+}
+
+function startGame() {
+  menu.hide();
+  audio.unlock();
+  suppressHeldKeys();
+  if (settings.mode === 'versus') {
+    audio.stopMusic();
+    game = new VersusGame(startMusic, showVersusResults);
+  } else {
+    game = new SingleGame(settings.mode, onSingleOver);
+    game.start();
+    startMusic();
+  }
+  setLayout(game.width);
+  state = 'game';
+  updateTouch();
+}
+
+function pause() {
+  if (state !== 'game' || !game) return;
+  if (game.type === 'versus' && game.phase === 'done') return;
+  game.paused = true;
+  state = 'paused';
+  audio.pauseMusic();
+  audio.play('pause');
+  updateTouch();
+  menu.show({
+    title: 'Paused',
+    className: 'compact',
+    items: [
+      { type: 'button', label: 'Resume', keys: ['KeyP'], keyLabel: 'P', action: resume },
+      { type: 'button', label: 'Restart', keys: ['KeyR'], keyLabel: 'R', action: startGame },
+      { type: 'button', label: 'Options', keys: ['KeyO'], keyLabel: 'O', action: () => showOptions(pauseMenuAgain) },
+      { type: 'button', label: 'Quit to menu', keys: ['KeyQ'], keyLabel: 'Q', action: showModeSelect },
+    ],
+    footer: 'Esc also resumes · M mute · F fullscreen',
+    onBack: resume,
+  });
+}
+
+function pauseMenuAgain() {
+  state = 'game';
+  pause();
+}
+
+function resume() {
+  if (!game) return;
+  menu.hide();
+  game.paused = false;
+  state = 'game';
+  suppressHeldKeys();
+  audio.resumeMusic();
+  updateTouch();
+}
+
+function onSingleOver() {
+  const g = game as SingleGame;
+  state = 'gameover';
+  updateTouch();
+  const score = g.field.score;
+  if (!qualifies(g.mode, score)) {
+    showGameOver(g, -1);
+    return;
+  }
+  audio.play('highscore');
+  const save = () => {
+    const input = overlay.querySelector<HTMLInputElement>('input.name');
+    const name = (input?.value ?? '').trim().slice(0, 10) || 'anon';
+    lastName = name;
+    showGameOver(g, addHighScore(g.mode, { name, score }));
+  };
+  menu.show({
+    title: 'New high score!',
+    className: 'compact',
+    htmlFirst: true,
+    html: () =>
+      `<p class="big">${score}</p><label class="namefield">Your name<input class="name" maxlength="10" autocomplete="off" spellcheck="false" value="${esc(lastName)}"></label>`,
+    items: [{ type: 'button', label: 'Save', action: save }],
+    onBack: () => showGameOver(g, -1),
+    afterRender: (root) => {
+      const input = root.querySelector<HTMLInputElement>('input.name');
+      input?.focus();
+      input?.select();
+    },
+  });
+}
+
+function showGameOver(g: SingleGame, rank: number) {
+  const f = g.field;
+  const stats =
+    g.mode === 'cut'
+      ? `<div class="stats"><div><span>Score</span><b>${f.score}</b></div><div><span>Level</span><b>${f.level}</b></div><div><span>Lines</span><b>${f.lines}</b></div></div>`
+      : `<div class="stats"><div><span>Score</span><b>${f.score}</b></div><div><span>Pieces</span><b>${f.placed}</b></div></div>`;
+  menu.show({
+    title: 'Game over',
+    htmlFirst: true,
+    html: () => stats + scoreTable(g.mode, rank),
+    items: [
+      { type: 'button', label: 'Play again', action: startGame },
+      { type: 'button', label: 'Change mode', action: showModeSelect },
+    ],
+    onBack: showModeSelect,
+  });
+}
+
+function showVersusResults() {
+  const g = game as VersusGame;
+  state = 'results';
+  updateTouch();
+  const [a, b] = g.fields.map((f) => f.placed);
+  menu.show({
+    title: g.winner === 2 ? 'Draw!' : `Player ${g.winner + 1} wins!`,
+    className: 'compact',
+    htmlFirst: true,
+    html: () =>
+      `<div class="stats"><div><span>Player 1</span><b>${a}</b></div><div><span>Player 2</span><b>${b}</b></div></div><p class="info center">Wins ${VersusGame.wins[0]} – ${VersusGame.wins[1]}</p>`,
+    items: [
+      { type: 'button', label: 'Rematch', action: startGame },
+      { type: 'button', label: 'Change mode', action: showModeSelect },
+    ],
+    onBack: showModeSelect,
+  });
+}
+
+function toggleFullscreen() {
+  if (document.fullscreenElement) void document.exitFullscreen();
+  else void document.documentElement.requestFullscreen?.().catch(() => {});
+}
+
+// ------------------------------------------------------------------ input routing
+
+const PAUSE_KEYS = new Set(['Enter', 'NumpadEnter', 'Escape', 'KeyP']);
+const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab', 'Backspace']);
+
+function handleKey(code: string) {
+  if (menu.active && menu.key(code)) return;
+  if (state === 'game' && PAUSE_KEYS.has(code)) pause();
+}
+
+window.addEventListener('keydown', (e) => {
+  audio.unlock();
+  if (e.target instanceof HTMLInputElement) {
+    if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Escape') {
+      e.preventDefault();
+      handleKey(e.code);
+    }
+    return;
+  }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (SCROLL_KEYS.has(e.code)) e.preventDefault();
+  if (e.code === 'KeyF' && !e.repeat) {
+    toggleFullscreen();
+    return;
+  }
+  if (e.code === 'KeyM' && !e.repeat) {
+    toggleMute();
+    return;
+  }
+  const nav = e.code.startsWith('Arrow') && menu.active;
+  if (e.repeat && !nav) return;
+  handleKey(e.code);
+});
+
+window.addEventListener('pointerdown', () => audio.unlock());
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pause();
+});
+window.addEventListener('blur', () => pause());
+
+// Keep the button from taking keyboard focus, so Space/Enter never "click" it again later.
+pauseBtn.addEventListener('pointerdown', (e) => e.preventDefault());
+pauseBtn.addEventListener('click', () => pause());
+
+touchEl.querySelectorAll<HTMLButtonElement>('button[data-a]').forEach((btn) => {
+  const action = btn.dataset.a as 'left' | 'right' | 'down' | 'rotL' | 'rotR';
+  const on = (e: PointerEvent) => {
+    e.preventDefault();
+    btn.setPointerCapture(e.pointerId);
+    btn.classList.add('down');
+    setTouch(action, true);
+  };
+  const off = () => {
+    btn.classList.remove('down');
+    setTouch(action, false);
+  };
+  btn.addEventListener('pointerdown', on);
+  btn.addEventListener('pointerup', off);
+  btn.addEventListener('pointercancel', off);
+  btn.addEventListener('lostpointercapture', off);
+  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+});
+
+// ------------------------------------------------------------------ loop
+
+const DEMO_AT = { x: (SINGLE_W - 328) / 2, y: 32 };
+
+function tick(dt: number) {
+  if (state === 'title' || state === 'menu') demo.update(dt);
+  else if (game) game.update(dt);
+}
+
+function draw() {
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  if ((state === 'title' || state === 'menu') && !game) {
+    drawBackground(ctx, logicalW, H);
+    drawField(ctx, demo.field, DEMO_AT, { dim: 0.35 });
+  } else if (game) {
+    game.render(ctx);
+  }
+}
+
+let last = performance.now();
+let acc = 0;
+function frame(now: number) {
+  const dt = Math.min(0.1, (now - last) / 1000);
+  last = now;
+  pollPadPresses((code) => {
+    if (menu.active || code === 'Enter') handleKey(code);
+  });
+  acc += dt;
+  let steps = 0;
+  while (acc >= STEP && steps < 6) {
+    tick(STEP);
+    acc -= STEP;
+    steps++;
+  }
+  if (steps === 6) acc = 0;
+  draw();
+  requestAnimationFrame(frame);
+}
+
+fit();
+showTitle();
+requestAnimationFrame(frame);
+
+// Expose a tiny hook for debugging in the console.
+(window as unknown as { slicefall: unknown }).slicefall = {
+  get game() {
+    return game;
+  },
+  get demo() {
+    return demo;
+  },
+  resetDemo() {
+    demo = new Demo();
+  },
+};

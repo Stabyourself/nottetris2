@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0d1020" />
+    <title>Slicefall</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='5' width='7' height='7' rx='1' fill='%23ff7a59' transform='rotate(-12 4 8)'/%3E%3Crect x='8' y='3' width='7' height='7' rx='1' fill='%23ffd34d' transform='rotate(9 11 6)'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="stage">
+        <canvas id="game" aria-label="Game field"></canvas>
+        <button id="pausebtn" hidden tabindex="-1" aria-label="Pause">
+          <svg class="ico" viewBox="0 0 10 12" aria-hidden="true"><rect x="0" y="0" width="3.5" height="12" rx="1" /><rect x="6.5" y="0" width="3.5" height="12" rx="1" /></svg>
+          Pause <span class="kbd">P</span>
+        </button>
+        <div id="toast" aria-live="polite"></div>
+        <div id="overlay" hidden></div>
+      </div>
+      <div id="touch" hidden>
+        <div class="cluster">
+          <button data-a="left" aria-label="Move left">◀</button>
+          <button data-a="down" aria-label="Push down">▼</button>
+          <button data-a="right" aria-label="Move right">▶</button>
+        </div>
+        <div class="cluster">
+          <button data-a="rotL" aria-label="Rotate left">⟲</button>
+          <button data-a="rotR" aria-label="Rotate right">⟳</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
