@@ -15,6 +15,8 @@ export interface ButtonItem {
   keys?: string[];
   /** Short key name shown on the button, e.g. "R". */
   keyLabel?: string;
+  /** The screen's main action: drawn filled so it stands out from the settings around it. */
+  primary?: boolean;
 }
 export interface SliderItem {
   type: 'slider';
@@ -182,7 +184,8 @@ export class Menu {
         const sel = i === this.index ? ' sel' : '';
         if (it.type === 'button') {
           const kbd = it.keyLabel ? `<span class="kbd">${esc(it.keyLabel)}</span>` : '';
-          return `<button class="item btn${sel}" data-i="${i}">${esc(it.label)}${kbd}</button>`;
+          const primary = it.primary ? ' primary' : '';
+          return `<button class="item btn${primary}${sel}" data-i="${i}">${esc(it.label)}${kbd}</button>`;
         }
         if (it.type === 'choice') {
           const cur = it.get();
