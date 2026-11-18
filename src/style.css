@@ -676,6 +676,9 @@ table.board td.sub {
 /* ------------------------------------------------------------ touch controls */
 
 #touch {
+  /* Button size: 64px when there is room, shrinking so all five buttons fit on narrow phones.
+     74px = 16px side padding x2 + three 10px cluster gaps + the 12px gap between clusters. */
+  --btn: clamp(44px, (100vw - 74px) / 5, 64px);
   width: 100%;
   max-width: 640px;
   display: flex;
@@ -695,13 +698,13 @@ table.board td.sub {
 }
 
 #touch button {
-  width: 64px;
-  height: 64px;
+  width: var(--btn);
+  height: var(--btn);
   border-radius: 50%;
   border: 1.5px solid var(--line);
   background: rgba(var(--tint), 0.06);
   color: var(--text);
-  font-size: 26px;
+  font-size: calc(var(--btn) * 0.4);
   touch-action: none;
 }
 
