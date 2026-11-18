@@ -7,6 +7,9 @@ tumble and stack, and a row is sliced straight through the pieces once it holds 
 The rules and tuning are carried over from the original Lua source; the presentation (name,
 visuals, sound, music) is new. No assets from the original are used.
 
+Not Tetris 2 is itself a physics take on Tetris, which Alexey Pajitnov created in 1984. Tetris is a
+trademark of The Tetris Company; neither project is affiliated with or endorsed by it.
+
 ## Run it
 
 Needs Node 24 or newer.
@@ -163,6 +166,9 @@ Hotkeys (all modes):
 
 Gamepads work too (d-pad/stick to move, A/RB rotate right, B/X/LB rotate left, Start pauses;
 in Versus, pad 1 is player 1 and pad 2 is player 2). Touch devices get on-screen buttons.
+
+Options → Graphics switches between the default look and Retro: four greys, 8×8 pixel-art blocks
+with a pattern per piece kind, brick walls round the well, square panels and monospace type.
 
 ## How the port maps to the original
 

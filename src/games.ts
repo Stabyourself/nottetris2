@@ -138,7 +138,7 @@ export class VersusGame {
   static wins: [number, number] = [0, 0];
 
   readonly fields: [Field, Field];
-  readonly pauseRect: Rect = { x: 380, y: 516, w: 180, h: 36 };
+  readonly pauseRect: Rect = { x: 390, y: 516, w: 168, h: 36 };
   phase: VersusPhase = 'countdown';
   paused = false;
   winner: 0 | 1 | 2 = 2; // 2 = draw
@@ -240,8 +240,9 @@ export class VersusGame {
       }
     });
 
-    const px = 380;
-    const pw = 180;
+    // Centred between the fields, clear of the Retro brick walls (16 px each side of a field)
+    const px = 390;
+    const pw = 168;
     const cx = px + pw / 2;
     for (let i = 0; i < 2; i++) {
       const f = this.fields[i];
@@ -270,7 +271,7 @@ export function centreText(ctx: CanvasRenderingContext2D, text: string, x: numbe
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineWidth = Math.max(4, size / 7);
-  ctx.strokeStyle = 'rgba(8, 10, 22, 0.85)';
+  ctx.strokeStyle = `rgba(${COLORS.veil}, 0.85)`;
   ctx.lineJoin = 'round';
   ctx.strokeText(text, x, y);
   ctx.fillStyle = color;

@@ -5,11 +5,12 @@ import { Demo } from './demo';
 import { logoHtml } from './logo';
 import { H, SINGLE_W, SingleGame, VersusGame } from './games';
 import { clearTouch, pollPadPresses, setTouch, suppressHeldKeys } from './input';
-import { drawBackground, drawField } from './render';
+import { COLORS, drawBackground, drawField, setTheme } from './render';
 import { type Boards, fetchBoards, NAME_MAX, normalizeName, submitScore, type Submitted } from './api';
 import {
   type GameMode,
   type ScoredMode,
+  type ThemeName,
   addHighScore,
   highScores,
   loadSettings,
@@ -42,7 +43,19 @@ let cssScale = 1;
 
 const MODES: GameMode[] = ['cut', 'stack', 'versus'];
 const MODE_NAMES: Record<GameMode, string> = { cut: 'Cut', stack: 'Stack', versus: 'Versus' };
+const THEMES: ThemeName[] = ['modern', 'retro'];
+const THEME_NAMES: Record<ThemeName, string> = { modern: 'Modern', retro: 'Retro' };
 const isCoarse = window.matchMedia('(pointer: coarse)').matches;
+
+// ------------------------------------------------------------------ look
+
+/** Applies settings.theme to the canvas drawing and, through data-theme, to the HTML menus. */
+function applyTheme() {
+  if (!THEMES.includes(settings.theme)) settings.theme = 'modern';
+  setTheme(settings.theme);
+  document.documentElement.dataset.theme = settings.theme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', COLORS.bg);
+}
 
 // ------------------------------------------------------------------ layout
 
@@ -139,7 +152,7 @@ function showTitle() {
       { type: 'button', label: 'Options', action: () => showOptions(showTitle) },
     ],
     footer:
-      'Gameplay ported from <a href="https://github.com/Stabyourself/nottetris2" target="_blank" rel="noopener">Not Tetris 2</a> by Maurice Guégan (MIT).<br>Press F for fullscreen.',
+      'Gameplay ported from <a href="https://github.com/Stabyourself/nottetris2" target="_blank" rel="noopener">Not Tetris 2</a> by Maurice Guégan (MIT), a physics take on Tetris, which Alexey Pajitnov created in 1984.<br>Press F for fullscreen.',
   });
 }
 
@@ -356,6 +369,17 @@ function showOptions(back: () => void) {
           settings.music = v;
           audio.setVolumes(settings.sfx, settings.music);
           saveSettings(settings);
+        },
+      },
+      {
+        type: 'choice',
+        label: 'Graphics',
+        options: THEMES.map((t) => THEME_NAMES[t]),
+        get: () => THEMES.indexOf(settings.theme),
+        set: (i) => {
+          settings.theme = THEMES[i];
+          saveSettings(settings);
+          applyTheme();
         },
       },
       { type: 'button', label: 'Toggle fullscreen', keyLabel: 'F', action: toggleFullscreen },
@@ -639,6 +663,7 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 
+applyTheme();
 fit();
 showTitle();
 requestAnimationFrame(frame);
