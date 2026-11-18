@@ -68,7 +68,7 @@ fragments drop into the gap.
 ### Credits
 
 The gameplay is ported from [Not Tetris 2](https://github.com/Stabyourself/nottetris2) by Maurice
-Guégan (MIT license): its rules and tuning are carried over from the original source. Everything
+Guégan: its rules and tuning are carried over from the original source. Everything
 you see and hear is new: the graphics are drawn in code and the music and sound are synthesised
 at runtime. Physics by [planck.js](https://github.com/piqnt/planck.js).
 

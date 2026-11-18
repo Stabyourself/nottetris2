@@ -151,7 +151,7 @@ function showTitle() {
       { type: 'button', label: 'Options', action: () => showOptions(showTitle) },
     ],
     footer:
-      'Gameplay ported from <a href="https://github.com/Stabyourself/nottetris2" target="_blank" rel="noopener">Not Tetris 2</a> by Maurice Guégan (MIT), a physics take on Tetris, which Alexey Pajitnov created in 1984.<br>Press F for fullscreen.',
+      'Gameplay ported from <a href="https://github.com/Stabyourself/nottetris2" target="_blank" rel="noopener">Not Tetris 2</a> by Maurice Guégan, a physics take on Tetris, which Alexey Pajitnov created in 1984.<br>Press F for fullscreen.',
   });
 }
 

@@ -1,7 +1,7 @@
 # Slicefall
 
 A browser port of the gameplay from [Not Tetris 2](https://github.com/Stabyourself/nottetris2)
-by Maurice Guégan (MIT). Pieces are real rigid bodies: you push and spin them with forces, they
+by Maurice Guégan. Pieces are real rigid bodies: you push and spin them with forces, they
 tumble and stack, and a row is sliced straight through the pieces once it holds enough area.
 
 The rules and tuning are carried over from the original Lua source; the presentation (name,
