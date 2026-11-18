@@ -48,17 +48,30 @@ piece) and allows 30 submissions per IP per 10 minutes. That stops typos
 and casual fakes, but the browser reports the score, so a determined cheat can still post a
 believable one. Remove those by hand:
 
+Every finished Cut game is also logged in a `game` table, whether the player submits the score or
+skips it (and games that scored nothing, where no name is asked). Each row keeps the score, lines,
+level, pieces, cuts, biggest single cut and play time. A game gets the player's name only when they
+submit; skipped games have no name and never reach the leaderboard. Logging allows 60 games per IP
+per 10 minutes. To see how much the game is played:
+
+```sh
+docker exec slicefall node server/admin.ts stats              # games today, this week, all time; then per day
+docker exec slicefall node server/admin.ts stats 30           # ... with 30 days in the per-day table
+docker exec slicefall node server/admin.ts games 20           # latest games, "(no name)" when skipped
+```
+
 ```sh
 docker exec slicefall node server/admin.ts recent 20          # latest scores with their ids
 docker exec slicefall node server/admin.ts name ANN           # every score of one player
 docker exec slicefall node server/admin.ts delete 42          # one score
-docker exec slicefall node server/admin.ts delete-name ANN    # all of a player's scores
+docker exec slicefall node server/admin.ts delete-name ANN    # all of a player's scores (their games stay, unnamed)
 ```
 
 | Endpoint                                  | Returns |
 | ----------------------------------------- | ------- |
 | `GET /api/leaderboard?mode=cut`           | `{ weekStart, week: [...], allTime: [...] }`, top 10 each |
-| `POST /api/scores`                        | Takes `{ mode, name, score, lines, level, pieces, durationMs }`; returns the boards plus `weekRank` and `allTimeRank` |
+| `POST /api/games`                         | Takes `{ mode, score, lines, level, pieces, cuts, bestCut, durationMs }` at every game over; returns `{ id }` |
+| `POST /api/scores`                        | Takes `{ mode, name, score, lines, level, pieces, durationMs, gameId? }`; returns the boards plus `weekRank` and `allTimeRank`. With `gameId`, that logged game gets the name |
 | `GET /healthz`                            | `ok` when the database answers |
 
 ## Deployment

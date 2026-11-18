@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import type { Mode, Submission } from './scores.ts';
+import type { GameRecord, Mode, Submission } from './scores.ts';
 
 export interface BoardEntry {
   rank: number;
@@ -55,7 +55,39 @@ const MIGRATIONS = [
    CREATE INDEX score_by_mode_score ON score (mode, score DESC);
    CREATE INDEX score_by_mode_time  ON score (mode, created_at);
    CREATE INDEX score_by_mode_name  ON score (mode, name, score DESC);`,
+
+  // Every finished game, scored or skipped, for play statistics. A game gets the player's name
+  // (and its leaderboard row) only when they submit the score; NULL means they skipped or had none.
+  `CREATE TABLE game (
+     id          INTEGER PRIMARY KEY,
+     mode        TEXT    NOT NULL CHECK (mode IN ('cut')),
+     name        TEXT,
+     score_id    INTEGER REFERENCES score (id) ON DELETE SET NULL,
+     score       INTEGER NOT NULL,
+     lines       INTEGER NOT NULL,
+     level       INTEGER NOT NULL,
+     pieces      INTEGER NOT NULL,
+     cuts        INTEGER NOT NULL,
+     best_cut    INTEGER NOT NULL,
+     duration_ms INTEGER NOT NULL,
+     created_at  INTEGER NOT NULL -- unix ms
+   );
+   CREATE INDEX game_by_time  ON game (created_at);
+   CREATE INDEX game_by_score ON game (score_id);`,
 ];
+
+export interface GameTotals {
+  games: number;
+  /** Games whose score was submitted with a name */
+  named: number;
+  /** Different names among those */
+  players: number;
+  lines: number;
+  pieces: number;
+  playMs: number;
+  best: number;
+  avgScore: number;
+}
 
 export class ScoreDb {
   readonly sql: DatabaseSync;
@@ -83,6 +115,10 @@ export class ScoreDb {
     }
   }
 
+  /**
+   * Adds a leaderboard score. With a gameId, that game-log row gets the name too, but only if it is
+   * still unnamed and its numbers match: a score can't rename someone else's game.
+   */
   add(s: Submission, at: Date): number {
     const r = this.sql
       .prepare(
@@ -90,7 +126,61 @@ export class ScoreDb {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(s.mode, s.name, s.score, s.lines, s.level, s.pieces, s.durationMs, at.getTime());
+    const id = Number(r.lastInsertRowid);
+    if (s.gameId !== undefined) {
+      this.sql
+        .prepare(
+          `UPDATE game SET name = ?, score_id = ?
+           WHERE id = ? AND name IS NULL AND mode = ? AND score = ? AND lines = ? AND pieces = ? AND duration_ms = ?`,
+        )
+        .run(s.name, id, s.gameId, s.mode, s.score, s.lines, s.pieces, s.durationMs);
+    }
+    return id;
+  }
+
+  /** Logs a finished game, scored or not. */
+  addGame(g: GameRecord, at: Date): number {
+    const r = this.sql
+      .prepare(
+        `INSERT INTO game (mode, score, lines, level, pieces, cuts, best_cut, duration_ms, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(g.mode, g.score, g.lines, g.level, g.pieces, g.cuts, g.bestCut, g.durationMs, at.getTime());
     return Number(r.lastInsertRowid);
+  }
+
+  /** Totals over the game log since `since` (or ever). */
+  gameTotals(since: Date | null): GameTotals {
+    return this.sql
+      .prepare(
+        `SELECT COUNT(*) AS games, COUNT(name) AS named, COUNT(DISTINCT name) AS players,
+                COALESCE(SUM(lines), 0) AS lines, COALESCE(SUM(pieces), 0) AS pieces,
+                COALESCE(SUM(duration_ms), 0) AS playMs, COALESCE(MAX(score), 0) AS best,
+                COALESCE(ROUND(AVG(score)), 0) AS avgScore
+         FROM game WHERE created_at >= ?`,
+      )
+      .get(since?.getTime() ?? 0) as unknown as GameTotals;
+  }
+
+  /** Games per UTC day since `since`, newest day first. */
+  gamesByDay(since: Date) {
+    return this.sql
+      .prepare(
+        `SELECT date(created_at / 1000, 'unixepoch') AS day, COUNT(*) AS games, COUNT(name) AS named,
+                SUM(lines) AS lines, MAX(score) AS best, ROUND(SUM(duration_ms) / 60000.0) AS minutes
+         FROM game WHERE created_at >= ? GROUP BY day ORDER BY day DESC`,
+      )
+      .all(since.getTime());
+  }
+
+  /** The latest games, newest first (for the admin script). */
+  recentGames(limit: number) {
+    return this.sql
+      .prepare(
+        `SELECT id, mode, name, score, lines, level, pieces, cuts, best_cut, duration_ms, created_at
+         FROM game ORDER BY id DESC LIMIT ?`,
+      )
+      .all(limit);
   }
 
   /**
@@ -160,7 +250,9 @@ export class ScoreDb {
     return Number(this.sql.prepare('DELETE FROM score WHERE id = ?').run(id).changes) > 0;
   }
 
+  /** Removes a player's scores and takes their name off their games (the games still count). */
   removeName(name: string): number {
+    this.sql.prepare('UPDATE game SET name = NULL WHERE name = ?').run(name);
     return Number(this.sql.prepare('DELETE FROM score WHERE name = ?').run(name).changes);
   }
 

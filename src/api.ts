@@ -29,13 +29,24 @@ export interface Submitted extends Boards {
   allTimeRank: number | null;
 }
 
-export interface ScoreSubmission {
-  name: string;
+export interface GameStats {
   score: number;
   lines: number;
   level: number;
   pieces: number;
   durationMs: number;
+}
+
+/** A finished game for the server's game log, sent whether or not the score is submitted. */
+export interface GameRecord extends GameStats {
+  cuts: number;
+  bestCut: number;
+}
+
+export interface ScoreSubmission extends GameStats {
+  name: string;
+  /** From recordGame, so the logged game gets the name too */
+  gameId?: number;
 }
 
 const NAME_CHARS = /^[\p{L}\p{N} .\-_!?']+$/u;
@@ -62,6 +73,14 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function fetchBoards(): Promise<Boards> {
   return call<Boards>(`api/leaderboard?mode=${MODE}`);
+}
+
+export function recordGame(g: GameRecord): Promise<{ id: number }> {
+  return call<{ id: number }>('api/games', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: MODE, ...g }),
+  });
 }
 
 export function submitScore(s: ScoreSubmission): Promise<Submitted> {

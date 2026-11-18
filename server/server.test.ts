@@ -8,7 +8,7 @@ import { after, before, describe, test } from 'node:test';
 import { gunzipSync } from 'node:zlib';
 import { createApp, rateKey } from './app.ts';
 import { ScoreDb } from './db.ts';
-import { normalizeName, type Submission, validate, weekStart } from './scores.ts';
+import { type GameRecord, normalizeName, type Submission, validate, validateGame, weekStart } from './scores.ts';
 
 const cut = (over: Partial<Submission> = {}): Submission => ({
   mode: 'cut',
@@ -17,6 +17,18 @@ const cut = (over: Partial<Submission> = {}): Submission => ({
   lines: 4,
   level: 0,
   pieces: 12,
+  durationMs: 60_000,
+  ...over,
+});
+
+const played = (over: Partial<GameRecord> = {}): GameRecord => ({
+  mode: 'cut',
+  score: 500,
+  lines: 4,
+  level: 0,
+  pieces: 12,
+  cuts: 2,
+  bestCut: 3,
   durationMs: 60_000,
   ...over,
 });
@@ -56,6 +68,113 @@ describe('validate', () => {
       ['not an object', 'hello'],
     ];
     for (const [why, body] of cases) assert.equal(validate(body).ok, false, why);
+  });
+});
+
+describe('validate a score with its game', () => {
+  test('a gameId is optional and must be a positive whole number', () => {
+    const ok = validate({ ...cut(), gameId: 7 });
+    assert.ok(ok.ok && ok.value.gameId === 7);
+    assert.ok(validate(cut()).ok && !('gameId' in (validate(cut()) as { value: object }).value));
+    for (const bad of [0, -1, 1.5, '7', null]) assert.equal(validate({ ...cut(), gameId: bad }).ok, false, String(bad));
+  });
+});
+
+describe('validateGame', () => {
+  test('accepts scored and scoreless games', () => {
+    assert.ok(validateGame(played()).ok);
+    assert.ok(validateGame(played({ score: 0, lines: 0, cuts: 0, bestCut: 0, pieces: 9, durationMs: 20_000 })).ok);
+    assert.ok(validateGame(played({ score: 0, lines: 0, cuts: 0, bestCut: 0, pieces: 0, durationMs: 0 })).ok);
+    assert.ok(validateGame(played({ lines: 1, cuts: 1, bestCut: 1, score: 80, pieces: 5 })).ok);
+    assert.ok(validateGame(played({ lines: 25, level: 2, score: 6000, pieces: 60, cuts: 10, bestCut: 4, durationMs: 400_000 })).ok);
+  });
+
+  test('rejects games the field cannot produce', () => {
+    const cases: [string, unknown][] = [
+      ['points without rows', played({ lines: 0, cuts: 0, bestCut: 0 })],
+      ['rows without points', played({ score: 0 })],
+      ['level not lines/10', played({ lines: 12, level: 0, pieces: 30 })],
+      ['too few pieces', played({ pieces: 7 })],
+      ['too fast', played({ durationMs: 1000 })],
+      ['rows without cuts', played({ cuts: 0, bestCut: 0 })],
+      ['more cuts than rows', played({ cuts: 5, bestCut: 1 })],
+      ['cuts cannot reach the rows', played({ cuts: 1, bestCut: 3 })],
+      ['best cut bigger than the rows', played({ lines: 4, cuts: 1, bestCut: 5 })],
+      ['best cut bigger than the field', played({ lines: 19, level: 1, pieces: 40, score: 9000, cuts: 1, bestCut: 19 })],
+      ['missing cuts', { ...played(), cuts: undefined }],
+      ['mode', { ...played(), mode: 'versus' }],
+      ['not an object', 42],
+    ];
+    for (const [why, body] of cases) assert.equal(validateGame(body).ok, false, why);
+  });
+});
+
+describe('game log', () => {
+  const at = new Date('2026-11-18T12:00:00Z');
+  const game = (db: ScoreDb, id: number) => db.sql.prepare('SELECT name, score_id FROM game WHERE id = ?').get(id);
+
+  test('a submitted score names its game; a skipped game stays unnamed', () => {
+    const db = new ScoreDb(':memory:');
+    const scored = db.addGame(played(), at);
+    const skipped = db.addGame(played({ score: 300 }), at);
+    const scoreId = db.add(cut({ name: 'ANN', gameId: scored }), at);
+    assert.deepEqual({ ...game(db, scored) }, { name: 'ANN', score_id: scoreId });
+    assert.deepEqual({ ...game(db, skipped) }, { name: null, score_id: null });
+    db.close();
+  });
+
+  test("a score can't name a game with other numbers, or one already named", () => {
+    const db = new ScoreDb(':memory:');
+    const id = db.addGame(played(), at);
+    db.add(cut({ name: 'EVE', score: 499, gameId: id }), at);
+    assert.equal(game(db, id)!.name, null);
+    db.add(cut({ name: 'ANN', gameId: id }), at);
+    db.add(cut({ name: 'EVE', gameId: id }), at);
+    assert.equal(game(db, id)!.name, 'ANN');
+    db.add(cut({ name: 'BOB', gameId: 999 }), at); // no such game: the score still counts
+    assert.equal(db.board('cut', null, 10).length, 3);
+    db.close();
+  });
+
+  test('removing scores keeps the games but drops the link and the name', () => {
+    const db = new ScoreDb(':memory:');
+    const a = db.addGame(played(), at);
+    const b = db.addGame(played(), at);
+    db.remove(db.add(cut({ name: 'ANN', gameId: a }), at));
+    assert.deepEqual({ ...game(db, a) }, { name: 'ANN', score_id: null });
+    db.add(cut({ name: 'BOB', gameId: b }), at);
+    assert.equal(db.removeName('BOB'), 1);
+    assert.deepEqual({ ...game(db, b) }, { name: null, score_id: null });
+    assert.equal(db.gameTotals(null).games, 2);
+    db.close();
+  });
+
+  test('totals and days', () => {
+    const db = new ScoreDb(':memory:');
+    assert.deepEqual({ ...db.gameTotals(null) }, { games: 0, named: 0, players: 0, lines: 0, pieces: 0, playMs: 0, best: 0, avgScore: 0 });
+    const lastWeek = new Date('2026-11-10T12:00:00Z');
+    db.addGame(played({ score: 900, lines: 9, pieces: 30, cuts: 3, bestCut: 3 }), lastWeek);
+    const g1 = db.addGame(played(), at);
+    const g2 = db.addGame(played({ score: 200 }), at);
+    db.addGame(played({ score: 0, lines: 0, cuts: 0, bestCut: 0, pieces: 10 }), at);
+    db.add(cut({ name: 'ANN', gameId: g1 }), at);
+    db.add(cut({ name: 'ANN', score: 200, gameId: g2 }), at);
+
+    assert.deepEqual(
+      { ...db.gameTotals(null) },
+      { games: 4, named: 2, players: 1, lines: 17, pieces: 64, playMs: 240_000, best: 900, avgScore: 400 },
+    );
+    const week = db.gameTotals(weekStart(at));
+    assert.equal(week.games, 3);
+    assert.equal(week.best, 500);
+    assert.deepEqual(
+      db.gamesByDay(lastWeek).map((d) => [d.day, d.games, d.named]),
+      [
+        ['2026-11-18', 3, 2],
+        ['2026-11-10', 1, 0],
+      ],
+    );
+    db.close();
   });
 });
 
@@ -156,6 +275,7 @@ test('migrating an old database drops Stack scores and keeps Cut ones', () => {
         ['score_by_mode_name', 'score_by_mode_score', 'score_by_mode_time'],
       );
       assert.equal(db.add(cut({ name: 'EVE' }), new Date(5)), 4); // ids carry on
+      assert.equal(db.gameTotals(null).games, 0); // the game log starts empty
     } finally {
       db.close();
     }
@@ -179,6 +299,7 @@ describe('http', () => {
       staticDir: dir,
       addressHeader: 'x-forwarded-for',
       rateLimit: { max: 3, windowMs: 60_000 },
+      gameRateLimit: { max: 4, windowMs: 60_000 },
       now: () => new Date('2026-11-18T12:00:00Z'),
     });
     await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
@@ -193,6 +314,13 @@ describe('http', () => {
 
   const post = (body: unknown, ip = '10.0.0.1') =>
     fetch(`${base}/api/scores`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': `1.2.3.4, ${ip}` },
+      body: JSON.stringify(body),
+    });
+
+  const postGame = (body: unknown, ip = '10.0.0.1') =>
+    fetch(`${base}/api/games`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': `1.2.3.4, ${ip}` },
       body: JSON.stringify(body),
@@ -249,6 +377,44 @@ describe('http', () => {
     const board = (await (await fetch(`${base}/api/leaderboard?mode=cut`)).json()) as Boards;
     assert.equal(board.week[0].name, 'ZED');
     assert.equal((await fetch(`${base}/api/leaderboard?mode=stack`)).status, 400);
+  });
+
+  test('every game is logged, and a submitted score names its game', async () => {
+    const skipped = await postGame({ ...played(), score: 0, lines: 0, cuts: 0, bestCut: 0 }, '10.1.1.1');
+    assert.equal(skipped.status, 201);
+    const skippedId = ((await skipped.json()) as { id: number }).id;
+
+    const r = await postGame(played(), '10.1.1.1');
+    assert.equal(r.status, 201);
+    const { id } = (await r.json()) as { id: number };
+    assert.ok(id > skippedId);
+
+    assert.equal((await post({ ...cut(), name: 'logged', gameId: id }, '10.1.1.1')).status, 201);
+    const rows = db.sql.prepare('SELECT id, name FROM game WHERE id IN (?, ?) ORDER BY id').all(skippedId, id);
+    assert.deepEqual(
+      rows.map((g) => [g.id, g.name]),
+      [
+        [skippedId, null],
+        [id, 'LOGGED'],
+      ],
+    );
+  });
+
+  test('bad game records are refused', async () => {
+    assert.equal((await postGame(played({ cuts: 0 }))).status, 400);
+    assert.equal((await postGame({ ...played(), mode: 'stack' })).status, 400);
+    assert.equal((await post({ ...cut(), gameId: 'x' })).status, 400);
+    assert.equal((await fetch(`${base}/api/games`)).status, 405);
+    assert.equal((await fetch(`${base}/api/games`, { method: 'POST', body: '{}' })).status, 415);
+    const broken = await fetch(`${base}/api/games`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{' });
+    assert.equal(broken.status, 400);
+  });
+
+  test('too many games from one address are refused, apart from the score limit', async () => {
+    const ip = '10.7.7.7';
+    for (let i = 0; i < 4; i++) assert.equal((await postGame(played(), ip)).status, 201);
+    assert.equal((await postGame(played(), ip)).status, 429);
+    assert.equal((await post(cut({ name: 'STILL' }), ip)).status, 201);
   });
 
   test('bad requests are refused', async () => {
