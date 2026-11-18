@@ -9,14 +9,121 @@ visuals, sound, music) is new. No assets from the original are used.
 
 ## Run it
 
+Needs Node 24 or newer.
+
 ```bash
 npm install
-npm run dev
+npm run dev       # the game, with hot reload
+npm run server    # in a second terminal: the leaderboard API on :5034
 ```
 
-Then open the URL Vite prints (default http://localhost:5173).
+Open the URL Vite prints (default http://localhost:5173). Vite forwards `/api` to the server; without
+it the game still plays and shows only the scores kept in the browser.
 
-`npm run build` writes a static build to `dist/` (`npm run preview` serves it locally).
+| Script              | What it does |
+| ------------------- | ------------ |
+| `npm run build`     | Typecheck and build the game into `dist/` |
+| `npm start`         | Serve `dist/` and the API from one process, as in production (http://localhost:5034) |
+| `npm test`          | Server tests (`node:test`) |
+| `npm run typecheck` | Typecheck the game and the server |
+
+Settings come from `.env` if it exists (see `.env.example`). Nothing secret is needed.
+
+## Leaderboard
+
+After a Cut or Stack game you enter a name and the score goes to the server. Names are the only
+identity, like an arcade cabinet: the same name is the same player, upper-cased, so `ann` and `ANN`
+are one player. Each board lists every player's best score:
+
+- **This week**: since Monday 00:00 UTC
+- **All time**
+
+The server keeps the scores in SQLite (`data/slicefall.db`, `/data/slicefall.db` in Docker), using
+Node's built-in `node:sqlite`, so it has no npm dependencies at all. It checks that a score is one
+the game could produce (Stack is 100 per piece, Cut points per row, level and pieces must match the
+rows, a minimum time per piece) and allows 30 submissions per IP per 10 minutes. That stops typos
+and casual fakes, but the browser reports the score, so a determined cheat can still post a
+believable one. Remove those by hand:
+
+```sh
+docker exec slicefall node server/admin.ts recent 20          # latest scores with their ids
+docker exec slicefall node server/admin.ts name ANN           # every score of one player
+docker exec slicefall node server/admin.ts delete 42          # one score
+docker exec slicefall node server/admin.ts delete-name ANN    # all of a player's scores
+```
+
+| Endpoint                                  | Returns |
+| ----------------------------------------- | ------- |
+| `GET /api/leaderboard?mode=cut\|stack`    | `{ weekStart, week: [...], allTime: [...] }`, top 10 each |
+| `POST /api/scores`                        | Takes `{ mode, name, score, lines, level, pieces, durationMs }`; returns the boards plus `weekRank` and `allTimeRank` |
+| `GET /healthz`                            | `ok` when the database answers |
+
+## Deployment
+
+One Docker container serves the game and the API. Shipping works the same way as queesti.
+
+Pushing to `master` runs `.github/workflows/deploy.yml`:
+
+1. **check**: typecheck and tests. This also runs on pull requests.
+2. **image**: builds the Docker image and pushes `ghcr.io/gdainti/nottetris2-web:latest` and
+   `:sha-<commit>`. Pull requests only build it.
+3. **deploy**: calls the deployment webhook. The server runs `/opt/docker/slicefall/deploy.sh`,
+   which pulls the image, restarts the container and waits until it is healthy.
+
+The container joins the external `internet-grid` network, so Nginx Proxy Manager reaches it as
+`slicefall:5034`. No port is published on the host.
+
+### One-time setup
+
+**GitHub** (repo → Settings → Secrets and variables → Actions):
+
+| Name             | Type     | Value                                    |
+| ---------------- | -------- | ---------------------------------------- |
+| `WEBHOOK_URL`    | secret   | URL of the slicefall hook on the server  |
+| `WEBHOOK_SECRET` | secret   | token the hook checks                    |
+| `APP_URL`        | variable | optional, the game's public URL          |
+
+**Server:**
+
+```sh
+mkdir -p /opt/docker/slicefall && cd /opt/docker/slicefall
+# copy compose.yaml and deploy.sh from the repo here (chmod +x deploy.sh)
+cp .env.example .env   # or an empty .env: the defaults are fine
+docker login ghcr.io   # only if the image is private; a GitHub token with read:packages
+```
+
+Point the webhook receiver's slicefall hook at `/opt/docker/slicefall/deploy.sh`. CI does not sync
+`compose.yaml` or `deploy.sh`, so copy them to the server again when they change in the repo.
+
+Everything the app keeps is in `/opt/docker/slicefall/data` (`/data` in the container).
+
+**Nginx Proxy Manager:** add a proxy host for your domain → scheme `http`, host `slicefall`, port
+`5034`, with a Let's Encrypt certificate and "Force SSL".
+
+### Manual deploy and rollback
+
+```sh
+cd /opt/docker/slicefall
+./deploy.sh                    # latest
+./deploy.sh sha-<commit>       # a specific (e.g. previous) build
+```
+
+### Local Docker test
+
+```sh
+docker build -t slicefall .
+docker run --rm -p 5034:5034 -v "$PWD/data:/data" slicefall
+```
+
+Then open http://localhost:5034.
+
+### Backups
+
+To take a consistent copy of the database while it is running:
+
+```sh
+docker exec slicefall node server/admin.ts backup /data/backup.db
+```
 
 ## Modes
 
@@ -61,9 +168,11 @@ in Versus, pad 1 is player 1 and pad 2 is player 2). Touch devices get on-screen
 | `src/games.ts`     | — | Single-player and Versus game flow plus the HUD. |
 | `src/demo.ts`      | — | Self-playing field behind the title screen. |
 | `src/audio.ts`     | — | Synthesised sound effects and two original music loops (WebAudio). |
+| `src/api.ts`       | — | Calls the leaderboard API. |
+| `server/`          | — | Node server: static files, leaderboard API, SQLite (`db.ts`), score checks (`scores.ts`), admin script. Runs as TypeScript directly, since Node strips the types. |
 
 Physics uses [planck.js](https://github.com/piqnt/planck.js), a JavaScript rewrite of Box2D,
 the same engine LÖVE wraps. The simulation runs at a fixed 60 Hz step so it behaves the same
 on any refresh rate.
 
-High scores and settings are stored in the browser's `localStorage`.
+Settings, your last leaderboard name and a personal top 5 are stored in the browser's `localStorage`.

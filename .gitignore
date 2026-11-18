@@ -1,4 +1,14 @@
 node_modules
 dist
 .DS_Store
+
+# Env
 .env
+.env.*
+!.env.example
+
+# SQLite
+data/
+*.db
+*.db-shm
+*.db-wal

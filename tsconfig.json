@@ -10,7 +10,8 @@
     "noFallthroughCasesInSwitch": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "types": []
   },
   "include": ["src"]
 }

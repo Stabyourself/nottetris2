@@ -57,6 +57,11 @@ export class Menu {
     return this.screen !== null;
   }
 
+  /** The screen on show, so async work can check it is still the one it was started for. */
+  get current(): Screen | null {
+    return this.screen;
+  }
+
   show(screen: Screen) {
     this.screen = screen;
     this.index = screen.initial ?? 0;
