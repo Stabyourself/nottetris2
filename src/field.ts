@@ -36,6 +36,10 @@ export interface Piece {
   /** Polygons in body-local physics pixels (unshrunk; used for drawing, area and cutting). */
   shapes: Poly[];
   kind: number;
+  /** Body position (physics pixels) and angle before the last physics step, for drawing in between steps. */
+  prevX: number;
+  prevY: number;
+  prevAngle: number;
 }
 
 export interface PieceView {
@@ -151,7 +155,7 @@ export class Field {
       linearDamping: C.LINEAR_DAMPING,
       bullet: true,
     });
-    const piece: Piece = { body, shapes, kind };
+    const piece: Piece = { body, shapes, kind, prevX: x, prevY: y, prevAngle: angle };
     for (const s of shapes) this.addFixture(body, s, { piece });
     this.setMass(piece);
     return piece;
@@ -211,6 +215,8 @@ export class Field {
   }
 
   update(dt: number, controls: Controls) {
+    // If this update doesn't step the world, prev == current and drawing between steps stays still.
+    this.savePrevious();
     if (this.state === 'idle' || this.state === 'over') return;
 
     if (this.state === 'cutting') {
@@ -233,6 +239,7 @@ export class Field {
 
     if (this.state === 'playing' && this.active) this.applyControls(dt, controls);
 
+    this.updateBullets();
     this.landed = false;
     this.world.step(dt, C.VELOCITY_ITERATIONS, C.POSITION_ITERATIONS);
     if (this.landed && this.state === 'playing' && this.active) this.endBlock();
@@ -253,6 +260,32 @@ export class Field {
         this.state = 'over';
         this.emit('over');
       }
+    }
+  }
+
+  /** Remembers where every piece is before a step, so frames drawn between steps can be placed in between. */
+  private savePrevious() {
+    const save = (p: Piece) => {
+      const pos = p.body.getPosition();
+      p.prevX = pos.x * PX;
+      p.prevY = pos.y * PX;
+      p.prevAngle = p.body.getAngle();
+    };
+    for (const p of this.pieces) save(p);
+    if (this.active) save(this.active);
+  }
+
+  /**
+   * Continuous collision ("bullet") keeps fast pieces from passing through each other, but with a
+   * whole pile of bullets it's most of the cost of a step, and a hard landing that shakes the pile
+   * made steps take several ms. The falling piece is always a bullet (it's created as one); settled
+   * pieces only while they move fast, e.g. dropping after a cut or knocked by a landing piece.
+   */
+  private updateBullets() {
+    const limit = (C.BULLET_SPEED / PX) ** 2;
+    for (const p of this.pieces) {
+      const v = p.body.getLinearVelocity();
+      p.body.setBullet(v.x * v.x + v.y * v.y > limit);
     }
   }
 
@@ -413,11 +446,23 @@ export class Field {
     this.pieces = kept;
   }
 
-  views(): PieceView[] {
+  /**
+   * Where to draw each piece. Physics steps at a fixed 60 Hz while screens refresh at their own rate
+   * (often 120 Hz), so `alpha` (0–1) places pieces that far from the previous step towards the last
+   * one. Without it a fast drop moves 0 px, then a whole step, then 0 px again from frame to frame.
+   */
+  views(alpha = 1): PieceView[] {
     const out: PieceView[] = [];
     const add = (p: Piece) => {
       const pos = p.body.getPosition();
-      out.push({ x: pos.x * PX, y: pos.y * PX, angle: p.body.getAngle(), shapes: p.shapes, kind: p.kind });
+      const angle = p.body.getAngle();
+      out.push({
+        x: p.prevX + (pos.x * PX - p.prevX) * alpha,
+        y: p.prevY + (pos.y * PX - p.prevY) * alpha,
+        angle: p.prevAngle + (angle - p.prevAngle) * alpha,
+        shapes: p.shapes,
+        kind: p.kind,
+      });
     };
     for (const p of this.pieces) add(p);
     if (this.active) add(this.active);
