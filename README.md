@@ -34,7 +34,7 @@ Settings come from `.env` if it exists (see `.env.example`). Nothing secret is n
 
 ## Leaderboard
 
-After a Cut or Stack game you enter a name and the score goes to the server. Names are the only
+After a Cut game you enter a name and the score goes to the server. Names are the only
 identity, like an arcade cabinet: the same name is the same player, upper-cased, so `ann` and `ANN`
 are one player. Each board lists every player's best score:
 
@@ -43,8 +43,8 @@ are one player. Each board lists every player's best score:
 
 The server keeps the scores in SQLite (`data/slicefall.db`, `/data/slicefall.db` in Docker), using
 Node's built-in `node:sqlite`, so it has no npm dependencies at all. It checks that a score is one
-the game could produce (Stack is 100 per piece, Cut points per row, level and pieces must match the
-rows, a minimum time per piece) and allows 30 submissions per IP per 10 minutes. That stops typos
+the game could produce (points per row, level and pieces must match the rows, a minimum time per
+piece) and allows 30 submissions per IP per 10 minutes. That stops typos
 and casual fakes, but the browser reports the score, so a determined cheat can still post a
 believable one. Remove those by hand:
 
@@ -57,7 +57,7 @@ docker exec slicefall node server/admin.ts delete-name ANN    # all of a player'
 
 | Endpoint                                  | Returns |
 | ----------------------------------------- | ------- |
-| `GET /api/leaderboard?mode=cut\|stack`    | `{ weekStart, week: [...], allTime: [...] }`, top 10 each |
+| `GET /api/leaderboard?mode=cut`           | `{ weekStart, week: [...], allTime: [...] }`, top 10 each |
 | `POST /api/scores`                        | Takes `{ mode, name, score, lines, level, pieces, durationMs }`; returns the boards plus `weekRank` and `allTimeRank` |
 | `GET /healthz`                            | `ok` when the database answers |
 
@@ -140,8 +140,7 @@ docker exec slicefall node server/admin.ts backup /data/backup.db
 | Mode   | Original | Rules |
 | ------ | -------- | ----- |
 | Cut    | Game A   | Endless. A row is cut out when it holds 8.1 blocks' worth of area. Score = `ceil((n·3)^(avg^10)·20 + n²·40)` for `n` rows at average density `avg`. Level up every 10 rows (+7 px/s fall speed). |
-| Stack  | Game B   | No clearing. 100 points per piece stacked before topping out. |
-| Versus | 2P       | Two Stack fields side by side, same piece sequence (mirrored for player 1). Both play until they top out; more pieces wins. |
+| Versus | 2P       | Two Cut fields side by side, same piece sequence (mirrored for player 1). Both play until they top out; higher score wins. |
 
 ## Controls
 

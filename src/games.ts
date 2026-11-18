@@ -4,11 +4,11 @@ import { Field, type FieldEvent, NO_CONTROLS } from './field';
 import { singleControls, versusControls } from './input';
 import { MIRROR, randomKind } from './pieces';
 import { COLORS, FONT, card, drawBackground, drawField, drawPreview, label, value } from './render';
-import { highScores, type ScoredMode } from './storage';
+import { highScores } from './storage';
 
 export const H = 640;
 export const SINGLE_W = 620;
-export const VERSUS_W = 940;
+export const VERSUS_W = 980;
 export const SINGLE_FIELD = { x: 56, y: 32 };
 
 /** Where the HTML pause button sits, in logical canvas pixels. */
@@ -47,12 +47,9 @@ export class SingleGame {
   /** Seconds of actual play (not paused, not the game-over fall), sent with the score. */
   elapsed = 0;
 
-  constructor(
-    readonly mode: ScoredMode,
-    private onOver: () => void,
-  ) {
-    this.field = new Field({ mode, pickKind: randomKind, emit: (e) => this.onEvent(e) });
-    this.best = highScores(mode)[0]?.score ?? 0;
+  constructor(private onOver: () => void) {
+    this.field = new Field({ pickKind: randomKind, emit: (e) => this.onEvent(e) });
+    this.best = highScores()[0]?.score ?? 0;
   }
 
   get width() {
@@ -100,15 +97,10 @@ export class SingleGame {
       value(ctx, `+${f.lastAdd}`, px + pw - 16, 66 - t * 14, 18, 'right', COLORS.accent);
       ctx.globalAlpha = 1;
     }
-    if (this.mode === 'cut') {
-      label(ctx, 'Level', px + 18, 150);
-      value(ctx, String(f.level), px + 18, 186, 30);
-      label(ctx, 'Lines', px + 18, 232);
-      value(ctx, String(f.lines), px + 18, 268, 30);
-    } else {
-      label(ctx, 'Pieces', px + 18, 150);
-      value(ctx, String(f.placed), px + 18, 186, 30);
-    }
+    label(ctx, 'Level', px + 18, 150);
+    value(ctx, String(f.level), px + 18, 186, 30);
+    label(ctx, 'Lines', px + 18, 232);
+    value(ctx, String(f.lines), px + 18, 268, 30);
     label(ctx, 'Best', px + 18, 300);
     value(ctx, String(Math.max(this.best, f.score)), px + pw - 18, 300, 16, 'right', COLORS.dim);
 
@@ -138,7 +130,7 @@ export class VersusGame {
   static wins: [number, number] = [0, 0];
 
   readonly fields: [Field, Field];
-  readonly pauseRect: Rect = { x: 390, y: 516, w: 168, h: 36 };
+  readonly pauseRect: Rect = { x: 406, y: 516, w: 168, h: 36 };
   phase: VersusPhase = 'countdown';
   paused = false;
   winner: 0 | 1 | 2 = 2; // 2 = draw
@@ -146,9 +138,10 @@ export class VersusGame {
   private countdown = 3;
   private lastBeep = 4;
   private endTimer = 0;
+  /** Row meters go on the outer sides, so the layout mirrors around the centre panel. */
   private static readonly AT = [
-    { x: 40, y: 32 },
-    { x: 580, y: 32 },
+    { x: 48, y: 32 },
+    { x: 604, y: 32 },
   ];
 
   constructor(
@@ -165,8 +158,8 @@ export class VersusGame {
       };
     };
     this.fields = [
-      new Field({ mode: 'stack', pickKind: picker(0), emit: (e) => this.onEvent(0, e) }),
-      new Field({ mode: 'stack', pickKind: picker(1), emit: (e) => this.onEvent(1, e) }),
+      new Field({ pickKind: picker(0), emit: (e) => this.onEvent(0, e) }),
+      new Field({ pickKind: picker(1), emit: (e) => this.onEvent(1, e) }),
     ];
   }
 
@@ -179,9 +172,10 @@ export class VersusGame {
   }
 
   private onEvent(player: 0 | 1, e: FieldEvent) {
-    if (e === 'land') audio.play('land');
-    else if (e === 'topout') audio.play('back');
-    else if (e === 'fallout' && player === 0) audio.play('fallout');
+    if (e === 'topout') audio.play('back');
+    else if (e === 'fallout') {
+      if (player === 0) audio.play('fallout');
+    } else eventSound(e);
   }
 
   update(dt: number) {
@@ -205,7 +199,7 @@ export class VersusGame {
 
     if (this.phase === 'playing') {
       if (this.fields.every((f) => f.state === 'toppedOut')) {
-        const [a, b] = this.fields.map((f) => f.placed);
+        const [a, b] = this.fields.map((f) => f.score);
         const w = a > b ? 0 : b > a ? 1 : 2;
         this.winner = w;
         if (w !== 2) VersusGame.wins[w] = (VersusGame.wins[w] + 1) % 100;
@@ -233,7 +227,7 @@ export class VersusGame {
     this.fields.forEach((f, i) => {
       const at = VersusGame.AT[i];
       const out = f.state === 'toppedOut' && this.phase === 'playing';
-      drawField(ctx, f, at, { hidePieces: this.paused, dim: out ? 0.55 : 0 });
+      drawField(ctx, f, at, { hidePieces: this.paused, dim: out ? 0.55 : 0, meter: i === 0 ? 'left' : 'right' });
       if (out) centreText(ctx, 'TOPPED OUT', at.x + f.width / 2, at.y + C.FIELD_HEIGHT / 2, 26, COLORS.danger);
       if (this.phase === 'countdown') {
         centreText(ctx, String(Math.max(1, Math.ceil(this.countdown))), at.x + f.width / 2, at.y + C.FIELD_HEIGHT / 2, 110, COLORS.accent);
@@ -241,7 +235,7 @@ export class VersusGame {
     });
 
     // Centred between the fields, clear of the Retro brick walls (16 px each side of a field)
-    const px = 390;
+    const px = 406;
     const pw = 168;
     const cx = px + pw / 2;
     for (let i = 0; i < 2; i++) {
@@ -249,8 +243,8 @@ export class VersusGame {
       const y = 32 + i * 200;
       card(ctx, px, y, pw, 184);
       label(ctx, `Player ${i + 1}`, cx, y + 30, 'center');
-      value(ctx, String(f.placed), cx, y + 76, 40, 'center');
-      label(ctx, 'pieces', cx, y + 96, 'center');
+      value(ctx, String(f.score), cx, y + 76, 40, 'center');
+      label(ctx, 'score', cx, y + 96, 'center');
       if (!this.paused && this.phase !== 'countdown') drawPreview(ctx, f.nextKind, cx, y + 140, f.nextSpin, 0.55);
     }
     card(ctx, px, 432, pw, 72);

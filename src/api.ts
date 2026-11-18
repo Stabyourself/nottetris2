@@ -1,5 +1,7 @@
 // Talks to the leaderboard server (server/). URLs are relative, so the game works from any path.
-import type { ScoredMode } from './storage';
+
+/** The only game with a leaderboard. The server keeps a mode column so others can come back later. */
+const MODE = 'cut';
 
 export const NAME_MAX = 10;
 
@@ -14,7 +16,7 @@ export interface BoardEntry {
 }
 
 export interface Boards {
-  mode: ScoredMode;
+  mode: typeof MODE;
   /** Monday 00:00 UTC of the current week */
   weekStart: string;
   week: BoardEntry[];
@@ -28,7 +30,6 @@ export interface Submitted extends Boards {
 }
 
 export interface ScoreSubmission {
-  mode: ScoredMode;
   name: string;
   score: number;
   lines: number;
@@ -59,14 +60,14 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   }
 }
 
-export function fetchBoards(mode: ScoredMode): Promise<Boards> {
-  return call<Boards>(`api/leaderboard?mode=${mode}`);
+export function fetchBoards(): Promise<Boards> {
+  return call<Boards>(`api/leaderboard?mode=${MODE}`);
 }
 
 export function submitScore(s: ScoreSubmission): Promise<Submitted> {
   return call<Submitted>('api/scores', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(s),
+    body: JSON.stringify({ mode: MODE, ...s }),
   });
 }

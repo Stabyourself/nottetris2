@@ -1,5 +1,5 @@
-export type GameMode = 'cut' | 'stack' | 'versus';
-export type ScoredMode = 'cut' | 'stack';
+export type GameMode = 'cut' | 'versus';
+const GAME_MODES: GameMode[] = ['cut', 'versus'];
 export type ThemeName = 'modern' | 'retro';
 
 export interface Settings {
@@ -43,36 +43,36 @@ function write(key: string, value: unknown) {
 }
 
 export function loadSettings(): Settings {
-  return { ...DEFAULT_SETTINGS, ...(read<Partial<Settings>>(SETTINGS_KEY) ?? {}) };
+  const s = { ...DEFAULT_SETTINGS, ...(read<Partial<Settings>>(SETTINGS_KEY) ?? {}) };
+  // A mode that no longer exists (Stack) falls back to the default
+  if (!GAME_MODES.includes(s.mode)) s.mode = DEFAULT_SETTINGS.mode;
+  return s;
 }
 
 export function saveSettings(s: Settings) {
   write(SETTINGS_KEY, s);
 }
 
-type Tables = Record<ScoredMode, ScoreEntry[]>;
-
-function loadTables(): Tables {
-  const t = read<Partial<Tables>>(SCORES_KEY) ?? {};
-  return { cut: t.cut ?? [], stack: t.stack ?? [] };
+/** Stored as { cut: [...] }; older saves may also carry a Stack table, which is dropped on the next write. */
+function loadTable(): ScoreEntry[] {
+  return read<{ cut?: ScoreEntry[] }>(SCORES_KEY)?.cut ?? [];
 }
 
-export function highScores(mode: ScoredMode): ScoreEntry[] {
-  return loadTables()[mode].slice(0, TABLE_SIZE);
+export function highScores(): ScoreEntry[] {
+  return loadTable().slice(0, TABLE_SIZE);
 }
 
-export function qualifies(mode: ScoredMode, score: number): boolean {
+export function qualifies(score: number): boolean {
   if (score <= 0) return false;
-  const t = highScores(mode);
+  const t = highScores();
   return t.length < TABLE_SIZE || score > t[t.length - 1].score;
 }
 
-export function addHighScore(mode: ScoredMode, entry: ScoreEntry): number {
-  const tables = loadTables();
-  const t = tables[mode];
+export function addHighScore(entry: ScoreEntry): number {
+  const t = loadTable();
   t.push(entry);
   t.sort((a, b) => b.score - a.score);
-  tables[mode] = t.slice(0, TABLE_SIZE);
-  write(SCORES_KEY, tables);
-  return tables[mode].indexOf(entry);
+  const cut = t.slice(0, TABLE_SIZE);
+  write(SCORES_KEY, { cut });
+  return cut.indexOf(entry);
 }

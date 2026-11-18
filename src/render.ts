@@ -316,6 +316,8 @@ export function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: numb
 interface FieldDrawOpts {
   hidePieces?: boolean;
   dim?: number;
+  /** Which side of the well the row meter goes on (default left) */
+  meter?: 'left' | 'right';
 }
 
 export function drawField(ctx: CanvasRenderingContext2D, field: Field, at: FieldLayout, opts: FieldDrawOpts = {}) {
@@ -363,15 +365,16 @@ export function drawField(ctx: CanvasRenderingContext2D, field: Field, at: Field
     ctx.fillRect(at.x, at.y, w, h);
   }
 
-  if (field.mode === 'cut') drawRowMeter(ctx, field, at);
+  drawRowMeter(ctx, field, at, opts.meter ?? 'left');
 }
 
-/** Per-row fill gauge left of the well: how close each row is to being cut. */
-function drawRowMeter(ctx: CanvasRenderingContext2D, field: Field, at: FieldLayout) {
+/** Per-row fill gauge beside the well: how close each row is to being cut. */
+function drawRowMeter(ctx: CanvasRenderingContext2D, field: Field, at: FieldLayout, side: 'left' | 'right') {
   // 8 px clear of the frame or wall; in pixel art every edge lands on the pixel grid
   const art = theme.pixel;
   const mw = 12;
-  const mx = at.x - (art ? WALL : 6) - 8 - mw;
+  const gap = (art ? WALL : 6) + 8;
+  const mx = side === 'left' ? at.x - gap - mw : at.x + field.width + gap;
   const pad = art ? PIXEL : 3;
   for (let r = 0; r < C.ROWS; r++) {
     const y = at.y + r * C.BLOCK + pad;
