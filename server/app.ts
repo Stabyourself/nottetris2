@@ -31,11 +31,14 @@ const TYPES: Record<string, string> = {
   '.webmanifest': 'application/manifest+json',
 };
 
+// Only itch.io may frame the game: its page (*.itch.io) holds a frame from *.itch.zone, which holds
+// itch/index.html's iframe of this site. frame-ancestors is checked against every one of them.
+const FRAME_ANCESTORS = 'https://itch.io https://*.itch.io https://*.itch.zone';
+
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
-  'Content-Security-Policy':
-    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+  'Content-Security-Policy': `default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors ${FRAME_ANCESTORS}`,
 };
 
 interface StaticFile {
