@@ -21,7 +21,7 @@ done
 mkdir -p data
 [ "$(stat -c %u data)" = 1000 ] || chown 1000:1000 data
 
-echo "Deploying ghcr.io/gdainti/nottetris2-web:${TAG}"
+echo "Deploying ghcr.io/gdainti/slicefall:${TAG}"
 docker compose -f compose.yaml pull
 docker compose -f compose.yaml up -d --wait --wait-timeout 60
 docker image prune -f

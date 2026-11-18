@@ -68,7 +68,7 @@ One Docker container serves the game and the API. Shipping works the same way as
 Pushing to `master` runs `.github/workflows/deploy.yml`:
 
 1. **check**: typecheck and tests. This also runs on pull requests.
-2. **image**: builds the Docker image and pushes `ghcr.io/gdainti/nottetris2-web:latest` and
+2. **image**: builds the Docker image and pushes `ghcr.io/gdainti/slicefall:latest` and
    `:sha-<commit>`. Pull requests only build it.
 3. **deploy**: calls the deployment webhook. The server runs `/opt/docker/slicefall/deploy.sh`,
    which pulls the image, restarts the container and waits until it is healthy.
