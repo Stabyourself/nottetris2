@@ -111,14 +111,19 @@ body {
   text-shadow: 0 0.045em 0 var(--d);
 }
 
+/*
+ * The cut runs from 58% (left) to 38% (right) of the line height, with a 6% gap. It was chosen by
+ * measuring every letter: each piece it leaves is at least a fifth of its letter in Avenir Next,
+ * Helvetica Neue and the system font, so no letter keeps a sliver (62%/38% left one on the S).
+ */
 .logo-half.top {
-  clip-path: polygon(-5% -20%, 105% -20%, 105% 38%, -5% 62%);
+  clip-path: polygon(-5% -20%, 105% -20%, 105% 38%, -5% 58%);
 }
 
 .logo-half.bottom {
   position: absolute;
   inset: 0;
-  clip-path: polygon(-5% 68%, 105% 44%, 105% 120%, -5% 120%);
+  clip-path: polygon(-5% 64%, 105% 44%, 105% 120%, -5% 120%);
   transform: translate(0.035em, 0.075em);
 }
 

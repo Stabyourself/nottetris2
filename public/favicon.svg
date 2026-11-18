@@ -1,20 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- The logo in miniature: stripes in the piece colours (red to purple, like the letters of
-       SLICEFALL), sliced along the same diagonal, the lower half dropped. -->
+  <!-- The logo in miniature: one stripe per letter of SLICEFALL in the same piece colours
+       (Z L O S I J T Z L: red, orange, yellow, green, cyan, blue, purple, red, orange), sliced
+       along the same diagonal, the two halves slid apart sideways. -->
   <defs>
-    <clipPath id="tile"><rect x="2" y="2" width="28" height="26" rx="5" /></clipPath>
-    <clipPath id="above"><polygon points="0,0 32,0 32,13 0,18" /></clipPath>
+    <clipPath id="tile"><rect x="3" y="3" width="26" height="26" rx="5" /></clipPath>
+    <clipPath id="above"><polygon points="0,0 32,0 32,14 0,19" /></clipPath>
     <clipPath id="below"><polygon points="0,21 32,16 32,32 0,32" /></clipPath>
     <g id="stripes">
-      <rect x="2" y="2" width="4" height="26" fill="#f0444f" />
-      <rect x="6" y="2" width="4" height="26" fill="#ff8c2e" />
-      <rect x="10" y="2" width="4" height="26" fill="#ffd23f" />
-      <rect x="14" y="2" width="4" height="26" fill="#5fd35b" />
-      <rect x="18" y="2" width="4" height="26" fill="#2fd4d4" />
-      <rect x="22" y="2" width="4" height="26" fill="#4a78ff" />
-      <rect x="26" y="2" width="4" height="26" fill="#b452e8" />
+      <rect x="3" y="3" width="2.95" height="26" fill="#f0444f" />
+      <rect x="5.889" y="3" width="2.95" height="26" fill="#ff8c2e" />
+      <rect x="8.778" y="3" width="2.95" height="26" fill="#ffd23f" />
+      <rect x="11.667" y="3" width="2.95" height="26" fill="#5fd35b" />
+      <rect x="14.556" y="3" width="2.95" height="26" fill="#2fd4d4" />
+      <rect x="17.444" y="3" width="2.95" height="26" fill="#4a78ff" />
+      <rect x="20.333" y="3" width="2.95" height="26" fill="#b452e8" />
+      <rect x="23.222" y="3" width="2.95" height="26" fill="#f0444f" />
+      <rect x="26.111" y="3" width="2.889" height="26" fill="#ff8c2e" />
     </g>
   </defs>
-  <g clip-path="url(#above)"><g clip-path="url(#tile)"><use href="#stripes" /></g></g>
-  <g transform="translate(1 3)"><g clip-path="url(#below)"><g clip-path="url(#tile)"><use href="#stripes" /></g></g></g>
+  <g transform="translate(-2.5 0)"><g clip-path="url(#above)"><g clip-path="url(#tile)"><use href="#stripes" /></g></g></g>
+  <g transform="translate(2.5 0.5)"><g clip-path="url(#below)"><g clip-path="url(#tile)"><use href="#stripes" /></g></g></g>
 </svg>
