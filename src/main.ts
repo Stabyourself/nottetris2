@@ -511,10 +511,10 @@ function showGameOver(g: SingleGame, request: Promise<Boards | Submitted>, local
     items: [
       periodChoice(view),
       { type: 'button', label: 'Play again', action: startGame },
-      { type: 'button', label: 'Change mode', action: showModeSelect },
     ],
     initial: 1,
     onBack: showModeSelect,
+    backButton: true,
   });
   loadBoards(view, request);
 }
