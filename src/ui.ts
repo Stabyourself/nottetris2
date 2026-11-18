@@ -36,6 +36,8 @@ export interface Screen {
   items: Item[];
   footer?: string;
   onBack?: () => void;
+  /** Also show `onBack` as a small "‹ Back" button in the panel's top-left corner. */
+  backButton?: boolean;
   initial?: number;
   className?: string;
   /** Called after each render, e.g. to focus a text field. */
@@ -49,11 +51,28 @@ export function esc(s: string): string {
 export class Menu {
   private screen: Screen | null = null;
   private index = 0;
+  private pointer: { x: number; y: number } | null = null;
 
   constructor(
     private root: HTMLElement,
     private sound: (s: Sfx) => void,
-  ) {}
+  ) {
+    // Hover selects an item only when the mouse really moves. Re-rendering the menu (every arrow
+    // press, every new screen) makes the browser fire pointerenter on whatever sits under a
+    // resting mouse, which would steal the selection back from the keyboard.
+    root.addEventListener('pointermove', (e) => {
+      const last = this.pointer;
+      this.pointer = { x: e.clientX, y: e.clientY };
+      if (last && last.x === e.clientX && last.y === e.clientY) return;
+      const el = (e.target as Element).closest<HTMLElement>('.item');
+      if (!el) return;
+      const i = Number(el.dataset.i);
+      if (i === this.index) return;
+      this.index = i;
+      this.root.querySelectorAll('.item.sel').forEach((x) => x.classList.remove('sel'));
+      el.classList.add('sel');
+    });
+  }
 
   get active(): boolean {
     return this.screen !== null;
@@ -179,6 +198,7 @@ export class Menu {
     const extra = s.html ? `<div class="extra">${s.html()}</div>` : '';
     this.root.innerHTML = `
       <div class="menu ${s.className ?? ''}">
+        ${s.backButton && s.onBack ? '<button class="back" aria-label="Back">‹ Back<span class="kbd">Esc</span></button>' : ''}
         ${
           s.titleHtml
             ? `<h1 class="${s.titleClass ?? ''}" aria-label="${esc(s.title ?? '')}">${s.titleHtml}</h1>`
@@ -193,15 +213,6 @@ export class Menu {
         ${s.footer ? `<p class="footer">${s.footer}</p>` : ''}
       </div>`;
 
-    this.root.querySelectorAll<HTMLElement>('.item').forEach((el) => {
-      el.addEventListener('pointerenter', () => {
-        const i = Number(el.dataset.i);
-        if (i === this.index) return;
-        this.index = i;
-        this.root.querySelectorAll('.item.sel').forEach((x) => x.classList.remove('sel'));
-        el.classList.add('sel');
-      });
-    });
     this.root.querySelectorAll<HTMLButtonElement>('button.btn').forEach((el) => {
       el.addEventListener('click', () => {
         this.index = Number(el.dataset.i);
@@ -211,6 +222,10 @@ export class Menu {
           it.action();
         }
       });
+    });
+    this.root.querySelector<HTMLButtonElement>('button.back')?.addEventListener('click', () => {
+      this.sound('back');
+      s.onBack?.();
     });
     this.root.querySelectorAll<HTMLButtonElement>('button.opt').forEach((el) => {
       el.addEventListener('click', () => {

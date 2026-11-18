@@ -268,13 +268,11 @@ function showLeaderboard() {
   menu.show({
     title: 'Leaderboard',
     className: 'tight',
-    items: [
-      periodChoice(view),
-      { type: 'button', label: 'Back', keyLabel: 'Esc', action: showTitle },
-    ],
+    items: [periodChoice(view)],
     html: () => boardHtml(view),
     footer: 'Best score per name · weeks start Monday 00:00 UTC',
     onBack: showTitle,
+    backButton: true,
   });
   loadBoards(view, fetchBoards());
 }
@@ -287,6 +285,8 @@ function showModeSelect() {
   startMusic();
   menu.show({
     title: 'Game type',
+    // The subtitle takes the row Back used to have, so Start still lands under the mouse after clicking Play
+    subtitle: 'Pick a mode and some music.',
     className: 'pinned',
     items: [
       {
@@ -310,13 +310,12 @@ function showModeSelect() {
           startMusic();
         },
       },
-      // Start goes last so it, not Back, ends up under the mouse after clicking Play on the title
-      { type: 'button', label: 'Back', action: showTitle },
       { type: 'button', label: 'Start', action: startGame },
     ],
-    initial: 3,
+    initial: 2,
     html: () => modeInfo(settings.mode),
     onBack: showTitle,
+    backButton: true,
   });
 }
 
@@ -367,10 +366,10 @@ function showOptions(back: () => void) {
         },
       },
       { type: 'button', label: 'Toggle fullscreen', keyLabel: 'F', action: toggleFullscreen },
-      { type: 'button', label: 'Back', keyLabel: 'Esc', action: back },
     ],
     footer: 'M mutes sound at any time.',
     onBack: back,
+    backButton: true,
   });
 }
 
@@ -561,6 +560,8 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (SCROLL_KEYS.has(e.code)) e.preventDefault();
+  // The menu handles Enter itself; stop a focused (mouse-clicked) button from also "clicking" natively.
+  if ((e.code === 'Enter' || e.code === 'NumpadEnter') && menu.active) e.preventDefault();
   if (e.code === 'KeyF' && !e.repeat) {
     toggleFullscreen();
     return;

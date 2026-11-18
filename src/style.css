@@ -84,7 +84,7 @@ body {
   color-scheme: light;
 }
 
-:root[data-theme='retro'] :is(.menu, .item, .opt, .bar, .fill, .kbd, #pausebtn, #toast, .namefield input, #touch button) {
+:root[data-theme='retro'] :is(.menu, .item, .opt, .back, .bar, .fill, .kbd, #pausebtn, #toast, .namefield input, #touch button) {
   border-radius: 0;
 }
 
@@ -107,6 +107,7 @@ body {
 /* ------------------------------------------------------------ menus */
 
 .menu {
+  position: relative;
   pointer-events: auto;
   width: min(92%, calc(var(--s) * 400px));
   max-height: 94%;
@@ -132,6 +133,11 @@ body {
   align-self: flex-start;
   position: relative;
   top: 3%;
+}
+
+/* Its subtitle stands in for the row the Back button used to take, keeping Start under Play */
+.menu.pinned .sub {
+  margin-bottom: calc(var(--s) * 30px);
 }
 
 /* Retro's title screen is taller, which puts Play a little lower */
@@ -224,6 +230,36 @@ body {
   right: calc(var(--s) * 12px);
   top: 50%;
   transform: translateY(-50%);
+}
+
+/* Small "‹ Back" pill in the panel's top-left corner, out of the way of the main choices */
+.back {
+  position: absolute;
+  top: calc(var(--s) * 12px);
+  left: calc(var(--s) * 12px);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  font: inherit;
+  font-size: calc(var(--s) * 13px);
+  font-weight: 700;
+  color: var(--dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: calc(var(--s) * 5px) calc(var(--s) * 9px);
+  cursor: pointer;
+}
+
+.back:hover {
+  color: var(--text);
+  border-color: var(--line);
+  background: rgba(var(--tint), 0.06);
+}
+
+.back .kbd {
+  font-size: 0.8em;
 }
 
 .kbd {
