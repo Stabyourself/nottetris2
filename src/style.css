@@ -187,6 +187,23 @@ body {
 .logo-half.top {
   clip-path: polygon(-5% -20%, 105% -20%, 105% 38%, -5% 58%);
   transform: translateX(-0.08em);
+  /* the cut-off top keeps sliding a little left and right on the bottom half */
+  animation: logo-slide 2.6s ease-in-out infinite alternate;
+}
+
+@keyframes logo-slide {
+  from {
+    transform: translateX(-0.08em);
+  }
+  to {
+    transform: translateX(0.05em);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-half.top {
+    animation: none;
+  }
 }
 
 .logo-half.bottom {
