@@ -115,10 +115,11 @@ export class SingleGame {
     const hints = [
       ['← →  move', '↓  push'],
       ['Z X  rotate', 'M  mute'],
+      ['or  A D S  ·  J K rotate'],
     ];
     hints.forEach(([a, b], i) => {
       ctx.fillText(a, px + 18, 580 + i * 18);
-      ctx.fillText(b, px + 112, 580 + i * 18);
+      if (b) ctx.fillText(b, px + 112, 580 + i * 18);
     });
   }
 }
