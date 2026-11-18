@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import { gunzipSync } from 'node:zlib';
-import { createApp } from './app.ts';
+import { createApp, rateKey } from './app.ts';
 import { ScoreDb } from './db.ts';
 import { normalizeName, type Submission, validate, weekStart } from './scores.ts';
 
@@ -233,5 +233,24 @@ describe('http', () => {
     for (let i = 0; i < 3; i++) assert.equal((await post(cut({ name: `R${i}` }), ip)).status, 201);
     assert.equal((await post(cut({ name: 'R9' }), ip)).status, 429);
     assert.equal((await post(cut({ name: 'OTHER' }), '10.8.8.8')).status, 201);
+  });
+
+  test('IPv6 addresses in one /64 share a limit', async () => {
+    for (let i = 0; i < 3; i++) assert.equal((await post(cut({ name: `S${i}` }), `2001:db8:1:2::${i + 1}`)).status, 201);
+    assert.equal((await post(cut({ name: 'S9' }), '2001:db8:1:2:ffff:ffff:ffff:ffff')).status, 429);
+    assert.equal((await post(cut({ name: 'NEXT' }), '2001:db8:1:3::1')).status, 201);
+  });
+});
+
+describe('rate key', () => {
+  test('IPv4 as is, IPv6 by /64', () => {
+    assert.equal(rateKey('203.0.113.7'), '203.0.113.7');
+    assert.equal(rateKey('::ffff:203.0.113.7'), '203.0.113.7');
+    assert.equal(rateKey('2001:0DB8:0001:0002:aaaa:bbbb:cccc:dddd'), '2001:db8:1:2::/64');
+    assert.equal(rateKey('2001:db8:1:2::1'), '2001:db8:1:2::/64');
+    assert.equal(rateKey('2001:db8::1'), '2001:db8:0:0::/64');
+    assert.equal(rateKey('fe80::1%eth0'), 'fe80:0:0:0::/64');
+    assert.equal(rateKey('::1'), '0:0:0:0::/64');
+    assert.equal(rateKey('64:ff9b::192.0.2.1'), '64:ff9b:0:0::/64');
   });
 });

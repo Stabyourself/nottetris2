@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1
 
-FROM node:26-bookworm-slim AS build
+# Pinned by digest so every build starts from the same image; Dependabot proposes updates
+FROM node:26-trixie-slim@sha256:e6bedef217677b276c591795e169840edd9096dbf13f29df8ef8d1856b8820bc AS base
+
+FROM base AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -8,7 +11,7 @@ COPY . .
 RUN npm run build
 
 # The server has no npm dependencies (Node's own http and sqlite), so the image needs no node_modules
-FROM node:26-bookworm-slim
+FROM base
 WORKDIR /app
 ENV NODE_ENV=production \
 	PORT=5034 \

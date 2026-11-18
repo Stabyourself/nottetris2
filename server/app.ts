@@ -100,6 +100,25 @@ function readBody(req: IncomingMessage): Promise<string | null> {
   });
 }
 
+/**
+ * Who a request counts against for rate limiting. An IPv6 user usually gets a whole /64 and could
+ * take a fresh address for every request, so IPv6 addresses count per /64. IPv4 counts as is.
+ */
+export function rateKey(ip: string): string {
+  const addr = ip.replace(/%.*$/, '').toLowerCase();
+  if (!addr.includes(':')) return addr;
+  const mapped = addr.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return mapped[1];
+  // Expand "::" so the first four groups can be read off. A trailing dotted IPv4 part is two groups.
+  const groups = (part: string) => (part ? part.split(':').flatMap((g) => (g.includes('.') ? ['0', '0'] : [g])) : []);
+  const [head, tail] = addr.split('::');
+  const left = groups(head);
+  const right = tail === undefined ? [] : groups(tail);
+  const zeros = Array<string>(Math.max(0, 8 - left.length - right.length)).fill('0');
+  const prefix = [...left, ...zeros, ...right].slice(0, 4).map((g) => g.replace(/^0+(?=.)/, ''));
+  return `${prefix.join(':')}::/64`;
+}
+
 /** Sliding-window counter per IP. Old IPs are dropped as the map is used. */
 function rateLimiter(max: number, windowMs: number) {
   const hits = new Map<string, number[]>();
@@ -176,7 +195,7 @@ export function createApp(opts: AppOptions): Server {
       const checked = validate(body);
       if (!checked.ok) return json(res, 400, { error: checked.error });
       const at = now();
-      if (!limit(clientIp(req), at.getTime())) return json(res, 429, { error: 'too many scores, try again later' });
+      if (!limit(rateKey(clientIp(req)), at.getTime())) return json(res, 429, { error: 'too many scores, try again later' });
 
       const s = checked.value;
       const id = db.add(s, at);
