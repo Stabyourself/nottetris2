@@ -5,7 +5,15 @@
   --text: #eef1ff;
   --dim: #8890c0;
   --accent: #ffd34d;
-  --font: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
+  /* text on an --accent background */
+  --on-accent: #1a1400;
+  /* HUD button fill */
+  --card: rgba(30, 36, 74, 0.75);
+  /* "r, g, b" for faint fills and rules over the panel, and for tints of the accent */
+  --tint: 255, 255, 255;
+  --glow: 255, 211, 77;
+  --sans: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
+  --font: var(--sans);
   color-scheme: dark;
 }
 
@@ -59,6 +67,43 @@ body {
   display: none;
 }
 
+/* Retro look (Options → Graphics): four greys, pixel-art blocks, square corners, monospace type */
+:root[data-theme='retro'] {
+  --bg: #b3b6a3;
+  --panel: rgba(224, 226, 210, 0.96);
+  --card: rgba(224, 226, 210, 0.92);
+  --line: #24261f;
+  --text: #24261f;
+  --dim: #55584a;
+  --accent: #24261f;
+  --danger: #24261f;
+  --on-accent: #e0e2d2;
+  --tint: 36, 38, 31;
+  --glow: 36, 38, 31;
+  --font: 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', 'Courier New', monospace;
+  color-scheme: light;
+}
+
+:root[data-theme='retro'] :is(.menu, .item, .opt, .bar, .fill, .kbd, #pausebtn, #toast, .namefield input, #touch button) {
+  border-radius: 0;
+}
+
+:root[data-theme='retro'] .menu {
+  border-width: 4px;
+  box-shadow: calc(var(--s) * 8px) calc(var(--s) * 8px) 0 rgba(var(--tint), 0.3);
+  backdrop-filter: none;
+}
+
+/* The accent is the ink colour here, so the logo and the player's own score row need other cues */
+:root[data-theme='retro'] .logo-half span {
+  color: var(--text);
+  text-shadow: 0 0.045em 0 #8f9380;
+}
+
+:root[data-theme='retro'] table.scores tr.me td {
+  background: rgba(var(--tint), 0.14);
+}
+
 /* ------------------------------------------------------------ menus */
 
 .menu {
@@ -74,7 +119,7 @@ body {
   backdrop-filter: blur(6px);
   font-size: calc(var(--s) * 15px);
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: rgba(var(--tint), 0.15) transparent;
 }
 
 .menu.compact {
@@ -95,6 +140,7 @@ body {
   width: max-content;
   /* the bottom half hangs 0.03em below the box, into this margin */
   margin: 0 auto calc(var(--s) * 14px);
+  font-family: var(--sans);
   font-size: calc(var(--s) * 58px);
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -147,7 +193,7 @@ body {
   color: var(--text);
   border: 1.5px solid transparent;
   border-radius: calc(var(--s) * 10px);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--tint), 0.04);
   padding: calc(var(--s) * 10px) calc(var(--s) * 14px);
 }
 
@@ -173,7 +219,7 @@ body {
   border-radius: 0.35em;
   border: 1px solid var(--line);
   border-bottom-width: 2px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--tint), 0.06);
   color: var(--dim);
   font-size: 0.72em;
   font-weight: 700;
@@ -192,8 +238,8 @@ body {
   font: inherit;
   font-weight: 700;
   color: var(--text);
-  background: rgba(30, 36, 74, 0.75);
-  border: 1.5px solid rgba(120, 132, 220, 0.25);
+  background: var(--card);
+  border: 1.5px solid var(--line);
   border-radius: 10px;
   cursor: pointer;
 }
@@ -204,7 +250,7 @@ body {
 
 #pausebtn:hover {
   border-color: var(--accent);
-  background: rgba(255, 211, 77, 0.1);
+  background: rgba(var(--glow), 0.1);
 }
 
 #pausebtn .ico {
@@ -220,7 +266,7 @@ body {
   transform: translate(-50%, -8px);
   padding: calc(var(--s) * 7px) calc(var(--s) * 14px);
   border-radius: 999px;
-  background: rgba(20, 24, 54, 0.92);
+  background: var(--panel);
   border: 1px solid var(--line);
   font-weight: 700;
   font-size: calc(var(--s) * 14px);
@@ -238,7 +284,7 @@ body {
 
 .item.sel {
   border-color: var(--accent);
-  background: rgba(255, 211, 77, 0.1);
+  background: rgba(var(--glow), 0.1);
 }
 
 .item.choice,
@@ -270,7 +316,7 @@ body {
   font: inherit;
   font-weight: 700;
   color: var(--dim);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--tint), 0.05);
   border: 1px solid transparent;
   border-radius: 999px;
   padding: calc(var(--s) * 5px) calc(var(--s) * 12px);
@@ -278,7 +324,7 @@ body {
 }
 
 .opt.on {
-  color: #1a1400;
+  color: var(--on-accent);
   background: var(--accent);
 }
 
@@ -287,7 +333,7 @@ body {
   flex: 1;
   height: calc(var(--s) * 10px);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--tint), 0.08);
   cursor: pointer;
 }
 
@@ -360,7 +406,7 @@ table.scores caption {
 
 table.scores td {
   padding: calc(var(--s) * 4px) calc(var(--s) * 6px);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(var(--tint), 0.06);
 }
 
 table.scores td:first-child {
@@ -525,7 +571,7 @@ table.board td.sub {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--tint), 0.06);
   border: 1.5px solid var(--line);
   border-radius: calc(var(--s) * 10px);
   padding: calc(var(--s) * 8px) calc(var(--s) * 12px);
@@ -576,7 +622,7 @@ table.board td.sub {
   height: 64px;
   border-radius: 50%;
   border: 1.5px solid var(--line);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--tint), 0.06);
   color: var(--text);
   font-size: 26px;
   touch-action: none;
@@ -589,6 +635,6 @@ table.board td.sub {
 }
 
 #touch button.down {
-  background: rgba(255, 211, 77, 0.25);
+  background: rgba(var(--glow), 0.25);
   border-color: var(--accent);
 }
