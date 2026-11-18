@@ -6,7 +6,7 @@ import { logoHtml } from './logo';
 import { H, SINGLE_W, SingleGame, VersusGame } from './games';
 import { clearTouch, pollPadPresses, setTouch, suppressHeldKeys } from './input';
 import { COLORS, drawBackground, drawField, setTheme } from './render';
-import { type Boards, fetchBoards, NAME_MAX, normalizeName, submitScore, type Submitted } from './api';
+import { type Boards, fetchBoards, NAME_MAX, normalizeName, recordGame, submitScore, type Submitted } from './api';
 import {
   type GameMode,
   type ThemeName,
@@ -431,12 +431,19 @@ function resume() {
   updateTouch();
 }
 
-/** Game over in Cut: ask for a name, then show where the score landed. */
+/** Game over in Cut: log the game, ask for a name, then show where the score landed. */
 function onSingleOver() {
   const g = game as SingleGame;
   state = 'gameover';
   updateTouch();
   const f = g.field;
+  const stats = { score: f.score, lines: f.lines, level: f.level, pieces: f.placed, durationMs: Math.round(g.elapsed * 1000) };
+  // Every finished game goes in the server's game log, even when the score is skipped. A failed
+  // request only costs the statistics, so it is ignored.
+  const gameId = recordGame({ ...stats, cuts: f.cuts, bestCut: f.bestCut }).then(
+    (r) => r.id,
+    () => undefined,
+  );
   if (f.score <= 0) {
     showGameOver(g, fetchBoards(), -1);
     return;
@@ -456,14 +463,8 @@ function onSingleOver() {
     settings.name = name;
     saveSettings(settings);
     const localRank = personalBest ? addHighScore({ name, score: f.score }) : -1;
-    const request = submitScore({
-      name,
-      score: f.score,
-      lines: f.lines,
-      level: f.level,
-      pieces: f.placed,
-      durationMs: Math.round(g.elapsed * 1000),
-    });
+    // Waits for the game log's id (usually back long before the name is typed) to link the two.
+    const request = gameId.then((id) => submitScore({ ...stats, name, gameId: id }));
     showGameOver(g, request, localRank);
   };
   const skip = () => showGameOver(g, fetchBoards(), -1);

@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { extname, join, relative } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import type { ScoreDb } from './db.ts';
-import { MODES, type Mode, validate, weekStart } from './scores.ts';
+import { MODES, type Mode, validate, validateGame, weekStart } from './scores.ts';
 
 export interface AppOptions {
   db: ScoreDb;
@@ -13,6 +13,8 @@ export interface AppOptions {
   addressHeader?: string;
   /** Score submissions allowed per IP per window. */
   rateLimit?: { max: number; windowMs: number };
+  /** Game-log records allowed per IP per window. */
+  gameRateLimit?: { max: number; windowMs: number };
   now?: () => Date;
 }
 
@@ -145,6 +147,8 @@ export function createApp(opts: AppOptions): Server {
   const now = opts.now ?? (() => new Date());
   const files = opts.staticDir ? loadStatic(opts.staticDir) : new Map<string, StaticFile>();
   const limit = rateLimiter(opts.rateLimit?.max ?? 30, opts.rateLimit?.windowMs ?? 10 * 60_000);
+  // Every finished game is logged, and a game can end within seconds, so this one is looser.
+  const gameLimit = rateLimiter(opts.gameRateLimit?.max ?? 60, opts.gameRateLimit?.windowMs ?? 10 * 60_000);
 
   const clientIp = (req: IncomingMessage): string => {
     const forwarded = addressHeader ? req.headers[addressHeader.toLowerCase()] : undefined;
@@ -164,6 +168,21 @@ export function createApp(opts: AppOptions): Server {
     };
   };
 
+  /** Reads a JSON POST body. Sends the error itself and returns undefined when there is none to use. */
+  async function postedJson(req: IncomingMessage, res: ServerResponse): Promise<unknown> {
+    if (req.method !== 'POST') return void json(res, 405, { error: 'method not allowed' });
+    if (!(req.headers['content-type'] ?? '').startsWith('application/json')) {
+      return void json(res, 415, { error: 'send application/json' });
+    }
+    const raw = await readBody(req);
+    if (raw === null) return void json(res, 413, { error: 'body too large' });
+    try {
+      return JSON.parse(raw) as unknown;
+    } catch {
+      return void json(res, 400, { error: 'invalid JSON' });
+    }
+  }
+
   async function handle(req: IncomingMessage, res: ServerResponse) {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const path = url.pathname;
@@ -182,19 +201,19 @@ export function createApp(opts: AppOptions): Server {
       return json(res, 200, boards(mode));
     }
 
+    if (path === '/api/games') {
+      const body = await postedJson(req, res);
+      if (body === undefined) return;
+      const checked = validateGame(body);
+      if (!checked.ok) return json(res, 400, { error: checked.error });
+      const at = now();
+      if (!gameLimit(rateKey(clientIp(req)), at.getTime())) return json(res, 429, { error: 'too many games, try again later' });
+      return json(res, 201, { id: db.addGame(checked.value, at) });
+    }
+
     if (path === '/api/scores') {
-      if (method !== 'POST') return json(res, 405, { error: 'method not allowed' });
-      if (!(req.headers['content-type'] ?? '').startsWith('application/json')) {
-        return json(res, 415, { error: 'send application/json' });
-      }
-      const raw = await readBody(req);
-      if (raw === null) return json(res, 413, { error: 'body too large' });
-      let body: unknown;
-      try {
-        body = JSON.parse(raw);
-      } catch {
-        return json(res, 400, { error: 'invalid JSON' });
-      }
+      const body = await postedJson(req, res);
+      if (body === undefined) return;
       const checked = validate(body);
       if (!checked.ok) return json(res, 400, { error: checked.error });
       const at = now();

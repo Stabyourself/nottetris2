@@ -79,6 +79,9 @@ export class Field {
   level = 0;
   lines = 0;
   placed = 0;
+  /** How many times rows were cut, and the most rows one cut took (for the game log) */
+  cuts = 0;
+  bestCut = 0;
   lastAdd = 0;
   addTimer = C.SCORE_POPUP_TIME;
   nextSpin = 0;
@@ -393,6 +396,8 @@ export class Field {
     this.addTimer = C.SCORE_POPUP_TIME;
 
     this.lines += n;
+    this.cuts++;
+    this.bestCut = Math.max(this.bestCut, n);
     if (Math.floor(this.lines / 10) > this.level) {
       this.level++;
       this.speed = C.BASE_SPEED + this.level * C.SPEED_PER_LEVEL;
