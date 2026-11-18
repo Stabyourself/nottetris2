@@ -45,4 +45,6 @@ export const STEP = 1 / 60;
 // cut fragments: at 10/10 heavy pieces sink into the crumbs below them (up to 60 px) and then shove
 // everything apart, so the pile starts to jump. 20/20 removed that in every test game.
 export const VELOCITY_ITERATIONS = 20;
+// Settled pieces only get continuous collision while moving faster than this, in px/s (Field.updateBullets).
+export const BULLET_SPEED = 60;
 export const POSITION_ITERATIONS = 20;

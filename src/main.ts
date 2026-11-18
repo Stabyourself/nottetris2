@@ -617,14 +617,15 @@ function tick(dt: number) {
   else if (game) game.update(dt);
 }
 
-function draw() {
+/** `alpha`: how far this frame is between the last two physics steps (0–1), so motion stays even at any refresh rate. */
+function draw(alpha: number) {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   ctx.imageSmoothingEnabled = true;
   if ((state === 'title' || state === 'menu') && !game) {
     drawBackground(ctx, logicalW, H);
-    drawField(ctx, demo.field, DEMO_AT, { dim: 0.35 });
+    drawField(ctx, demo.field, DEMO_AT, { dim: 0.35, alpha });
   } else if (game) {
-    game.render(ctx);
+    game.render(ctx, alpha);
   }
 }
 
@@ -644,7 +645,7 @@ function frame(now: number) {
     steps++;
   }
   if (steps === 6) acc = 0;
-  draw();
+  draw(acc / STEP);
   requestAnimationFrame(frame);
 }
 

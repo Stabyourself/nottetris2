@@ -318,6 +318,8 @@ interface FieldDrawOpts {
   dim?: number;
   /** Which side of the well the row meter goes on (default left) */
   meter?: 'left' | 'right';
+  /** How far this frame is between the last two physics steps, 0–1 (see Field.views) */
+  alpha?: number;
 }
 
 export function drawField(ctx: CanvasRenderingContext2D, field: Field, at: FieldLayout, opts: FieldDrawOpts = {}) {
@@ -348,7 +350,7 @@ export function drawField(ctx: CanvasRenderingContext2D, field: Field, at: Field
 
   if (!opts.hidePieces) {
     const cutting = field.isCutting();
-    const views = cutting ? field.snapshot : field.views();
+    const views = cutting ? field.snapshot : field.views(opts.alpha);
     for (const v of views) drawPieceView(ctx, v);
 
     if (cutting && field.rowsLit()) {

@@ -79,10 +79,10 @@ export class SingleGame {
     this.field.update(dt, singleControls());
   }
 
-  render(ctx: CanvasRenderingContext2D) {
+  render(ctx: CanvasRenderingContext2D, alpha = 1) {
     const f = this.field;
     drawBackground(ctx, SINGLE_W, H);
-    drawField(ctx, f, SINGLE_FIELD, { hidePieces: this.paused });
+    drawField(ctx, f, SINGLE_FIELD, { hidePieces: this.paused, alpha });
 
     const px = 410;
     const pw = 186;
@@ -222,12 +222,12 @@ export class VersusGame {
     }
   }
 
-  render(ctx: CanvasRenderingContext2D) {
+  render(ctx: CanvasRenderingContext2D, alpha = 1) {
     drawBackground(ctx, VERSUS_W, H);
     this.fields.forEach((f, i) => {
       const at = VersusGame.AT[i];
       const out = f.state === 'toppedOut' && this.phase === 'playing';
-      drawField(ctx, f, at, { hidePieces: this.paused, dim: out ? 0.55 : 0, meter: i === 0 ? 'left' : 'right' });
+      drawField(ctx, f, at, { hidePieces: this.paused, dim: out ? 0.55 : 0, meter: i === 0 ? 'left' : 'right', alpha });
       if (out) centreText(ctx, 'TOPPED OUT', at.x + f.width / 2, at.y + C.FIELD_HEIGHT / 2, 26, COLORS.danger);
       if (this.phase === 'countdown') {
         centreText(ctx, String(Math.max(1, Math.ceil(this.countdown))), at.x + f.width / 2, at.y + C.FIELD_HEIGHT / 2, 110, COLORS.accent);
