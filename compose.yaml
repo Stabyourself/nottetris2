@@ -9,6 +9,14 @@ services:
       - ./data:/data
     networks:
       - internet-grid
+    # The app writes only to /data (and SQLite may use /tmp), and needs no Linux capabilities
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:

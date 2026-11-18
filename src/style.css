@@ -5,7 +5,6 @@
   --text: #eef1ff;
   --dim: #8890c0;
   --accent: #ffd34d;
-  --accent2: #ff7a59;
   --font: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
   color-scheme: dark;
 }
@@ -90,16 +89,44 @@ body {
   text-align: center;
 }
 
+/* Two copies of the word: the top half above a diagonal cut, the bottom half below it, dropped a little */
 .menu h1.logo {
+  position: relative;
+  width: max-content;
+  /* the bottom half hangs 0.03em below the box, into this margin */
+  margin: 0 auto calc(var(--s) * 14px);
   font-size: calc(var(--s) * 58px);
   font-weight: 900;
   letter-spacing: 0.04em;
   line-height: 1;
-  margin-bottom: calc(var(--s) * 10px);
-  background: linear-gradient(168deg, var(--accent) 0 47%, transparent 47% 53%, var(--accent2) 53% 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  white-space: nowrap;
+}
+
+.logo-half {
+  display: block;
+}
+
+.logo-half span {
+  color: var(--c);
+  text-shadow: 0 0.045em 0 var(--d);
+}
+
+/*
+ * The cut runs from 58% (left) to 38% (right) of the line height, with a 6% gap. It was chosen by
+ * measuring every letter: each piece it leaves is at least a fifth of its letter in Avenir Next,
+ * Helvetica Neue and the system font, so no letter keeps a sliver (62%/38% left one on the S).
+ */
+/* Like the favicon: the halves slide apart along the cut, top to the left, bottom to the right. */
+.logo-half.top {
+  clip-path: polygon(-5% -20%, 105% -20%, 105% 38%, -5% 58%);
+  transform: translateX(-0.08em);
+}
+
+.logo-half.bottom {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(-5% 64%, 105% 44%, 105% 120%, -5% 120%);
+  transform: translate(0.08em, 0.03em);
 }
 
 .menu .sub {

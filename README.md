@@ -70,18 +70,25 @@ Pushing to `master` runs `.github/workflows/deploy.yml`:
 3. **deploy**: calls the deployment webhook. The server runs `/opt/docker/slicefall/deploy.sh`,
    which pulls the image, restarts the container and waits until it is healthy.
 
+Actions are pinned to commit SHAs and the base image to a digest; Dependabot
+(`.github/dependabot.yml`) opens a PR when either has an update.
+
 The container joins the external `internet-grid` network, so Nginx Proxy Manager reaches it as
-`slicefall:5034`. No port is published on the host.
+`slicefall:5034`. No port is published on the host. It runs as a non-root user with a read-only
+filesystem and no Linux capabilities; only `/data` and `/tmp` are writable.
 
 ### One-time setup
 
-**GitHub** (repo → Settings → Secrets and variables → Actions):
+**GitHub** (repo → Settings → Environments → `production`): under "Deployment branches and tags"
+allow only `master`, then add:
 
 | Name             | Type     | Value                                    |
 | ---------------- | -------- | ---------------------------------------- |
 | `WEBHOOK_URL`    | secret   | URL of the slicefall hook on the server  |
 | `WEBHOOK_SECRET` | secret   | token the hook checks                    |
 | `APP_URL`        | variable | optional, the game's public URL          |
+
+As environment secrets, only the deploy job on `master` can read them.
 
 **Server:**
 

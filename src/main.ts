@@ -2,6 +2,7 @@ import './style.css';
 import { audio, TRACKS } from './audio';
 import { STEP } from './config';
 import { Demo } from './demo';
+import { logoHtml } from './logo';
 import { H, SINGLE_W, SingleGame, VersusGame } from './games';
 import { clearTouch, pollPadPresses, setTouch, suppressHeldKeys } from './input';
 import { drawBackground, drawField } from './render';
@@ -127,8 +128,9 @@ function showTitle() {
   updateTouch();
   menu.show({
     className: 'title',
-    title: 'SLICEFALL',
+    title: 'Slicefall',
     titleClass: 'logo',
+    titleHtml: logoHtml(),
     subtitle: 'Blocks with real physics. Rows get sliced out once they are packed full enough.',
     items: [
       { type: 'button', label: 'Play', action: showModeSelect },

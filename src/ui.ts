@@ -27,6 +27,8 @@ export type Item = ChoiceItem | ButtonItem | SliderItem;
 export interface Screen {
   title?: string;
   titleClass?: string;
+  /** Markup inside the title instead of the plain text (must already be escaped); `title` becomes its label. */
+  titleHtml?: string;
   subtitle?: string;
   /** Extra markup shown under the items (score tables, stats...). Must already be escaped. */
   html?: () => string;
@@ -177,7 +179,13 @@ export class Menu {
     const extra = s.html ? `<div class="extra">${s.html()}</div>` : '';
     this.root.innerHTML = `
       <div class="menu ${s.className ?? ''}">
-        ${s.title ? `<h1 class="${s.titleClass ?? ''}">${esc(s.title)}</h1>` : ''}
+        ${
+          s.titleHtml
+            ? `<h1 class="${s.titleClass ?? ''}" aria-label="${esc(s.title ?? '')}">${s.titleHtml}</h1>`
+            : s.title
+              ? `<h1 class="${s.titleClass ?? ''}">${esc(s.title)}</h1>`
+              : ''
+        }
         ${s.subtitle ? `<p class="sub">${esc(s.subtitle)}</p>` : ''}
         ${s.htmlFirst ? extra : ''}
         <div class="items">${items}</div>
